@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#ec4899', // 粉紅色
-        secondary: '#fbbf24', // 黃色
+        primary: '#ec4899',
+        secondary: '#fbbf24',
       }
     },
   },

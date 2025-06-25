@@ -4,7 +4,7 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 import App from './App.vue'
 import router from './router'
-import './style.css'
+import './assets/styles/main.css'  // 確保這個路徑正確
 
 // FontAwesome 圖標
 import { library } from '@fortawesome/fontawesome-svg-core'
@@ -12,7 +12,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { 
   faPlay, faPause, faVolumeUp, faVolumeMute, 
   faRandom, faMusic, faStar, faVideo, faHeart,
-  faList, faSearch, faUser, faHome
+  faList, faSearch, faUser, faHome, faChevronDown, faLink
 } from '@fortawesome/free-solid-svg-icons'
 import { 
   faFacebook, faTwitter 
@@ -22,7 +22,7 @@ import {
 library.add(
   faPlay, faPause, faVolumeUp, faVolumeMute,
   faRandom, faMusic, faStar, faVideo, faHeart,
-  faList, faSearch, faUser, faHome,
+  faList, faSearch, faUser, faHome, faChevronDown, faLink,
   faFacebook, faTwitter
 )
 
