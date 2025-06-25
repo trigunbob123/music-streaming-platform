@@ -1,0 +1,12 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* 自定義樣式 */
+.sidebar {
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+}
+
+.main-content {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+}
