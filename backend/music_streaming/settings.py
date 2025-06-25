@@ -180,5 +180,5 @@ if not DEBUG:
     AWS_S3_REGION_NAME = 'us-west-2'
 
 # Spotify API 設定
-SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
-SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+SPOTIFY_CLIENT_ID = os.getenv('d59beb4ffc24472a8746a1c4c92b67ba')
+SPOTIFY_CLIENT_SECRET = os.getenv('14adcd6ec52641fe8056a4f2db4ec6da')
