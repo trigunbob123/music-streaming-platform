@@ -24,16 +24,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-dev-secret-key-change-in-production')
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-k&fj==m(-p9wi9_!uml7*u4g$9c&i!ji!l(_um@4zzq)=$i(ct'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -180,5 +170,5 @@ if not DEBUG:
     AWS_S3_REGION_NAME = 'us-west-2'
 
 # Spotify API 設定
-SPOTIFY_CLIENT_ID = os.getenv('d59beb4ffc24472a8746a1c4c92b67ba')
-SPOTIFY_CLIENT_SECRET = os.getenv('14adcd6ec52641fe8056a4f2db4ec6da')
+SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
