@@ -176,6 +176,22 @@
           </button>
         </div>
 
+        <!--  載入狀態顯示 -->
+  <div v-if="loading" class="flex justify-center items-center h-32 mb-6">
+    <div class="flex items-center space-x-3 text-gray-600">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+      <span class="text-lg">載入中...</span>
+    </div>
+  </div>
+  
+  <!-- 錯誤狀態顯示 -->
+  <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+    <div class="flex items-center">
+      <font-awesome-icon icon="exclamation-triangle" class="mr-2" />
+      {{ error }}
+    </div>
+  </div>
+
         <!-- 隨機播放標題 -->
         <div class="flex items-center mb-6">
           <span class="bg-pink-500 text-white px-4 py-2 rounded-full font-bold">
@@ -188,21 +204,43 @@
 
         <!-- 音樂卡片區域 -->
         <div class="grid grid-cols-6 gap-4">
-          <div v-for="song in displayedSongs" :key="song.id" 
-               @click="playSong(song)"
-               class="music-card bg-white rounded-lg p-4 shadow-md hover:shadow-lg cursor-pointer transition-all duration-300">
-            <img :src="song.image" :alt="song.title" class="w-full h-32 object-cover rounded-lg mb-3">
-            <h3 class="font-bold text-sm text-gray-800 truncate">{{ song.title }}</h3>
-            <p class="text-xs text-gray-600 truncate">{{ song.artist }}</p>
-          </div>
-        </div>
+  <div v-for="song in displayedSongs" :key="song.id" 
+       @click="playSong(song)"
+       class="music-card bg-white rounded-lg p-4 shadow-md hover:shadow-lg cursor-pointer transition-all duration-300">
+    <!-- 🔧 修改：支援 API 數據結構的圖片顯示 -->
+    <img :src="song.album?.cover_image || song.image || 'https://via.placeholder.com/200x200/666/fff?text=No+Image'" 
+         :alt="song.title" 
+         class="w-full h-32 object-cover rounded-lg mb-3"
+         @error="$event.target.src = 'https://via.placeholder.com/200x200/666/fff?text=Error'">
+    
+    <!-- 歌曲標題 - 保持不變 -->
+    <h3 class="font-bold text-sm text-gray-800 truncate">{{ song.title }}</h3>
+    
+    <!-- 🔧 修改：支援 API 數據結構的藝人顯示 -->
+    <p class="text-xs text-gray-600 truncate">{{ song.artist?.name || song.artist || '未知藝人' }}</p>
+    
+    <!-- 🆕 新增：歌曲時長顯示 -->
+    <p class="text-xs text-gray-500 mt-1" v-if="song.duration">
+      {{ formatTime(song.duration) }}
+    </p>
+  </div>
+  
+  <!-- 🆕 新增：無歌曲時的提示 -->
+  <div v-if="!loading && displayedSongs.length === 0" 
+       class="col-span-6 text-center py-12 text-gray-500">
+    <font-awesome-icon icon="music" class="text-4xl mb-4 text-gray-300" />
+    <p class="text-lg">沒有找到歌曲</p>
+    <p class="text-sm">請嘗試選擇其他曲風或重新載入</p>
+  </div>
+</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { musicAPI } from './services/api'
 
 // 響應式數據
 const genres = ref(['Pop', 'Rock', 'Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Country', 'Latin', 'R&B', 'Folk'])
@@ -217,97 +255,143 @@ const isPlaying = ref(false)
 const isMuted = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
+const loading = ref(false)
+const error = ref(null)
 
-const currentSong = ref({
-  id: 1,
-  title: 'bomb',
-  artist: 'ILLIT',
-  image: 'https://via.placeholder.com/200x200/333/fff?text=bomb',
-  url: ''
-})
+// 📡 使用真實 API 數據
+const currentSong = ref({})
+const songs = ref([])
+const displayedSongsData = ref([])
 
-const songs = ref([
+// 音頻播放器引用
+const audioPlayer = ref(null)
+
+// 🔄 API 方法
+const loadAllSongs = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await musicAPI.getAllSongs()
+    songs.value = response.data.results || response.data
+    console.log('載入歌曲成功:', songs.value.length, '首')
+  } catch (err) {
+    error.value = '載入歌曲失敗: ' + err.message
+    console.error('載入歌曲失敗:', err)
+    // 如果 API 失敗，使用備用假數據
+    songs.value = getFallbackSongs()
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadSongsByGenre = async (genre) => {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await musicAPI.getSongsByGenre(genre)
+    displayedSongsData.value = response.data.results || response.data
+    console.log(`載入 ${genre} 歌曲成功:`, displayedSongsData.value.length, '首')
+  } catch (err) {
+    error.value = `載入 ${genre} 歌曲失敗: ` + err.message
+    console.error('載入曲風歌曲失敗:', err)
+    // 如果 API 失敗，從本地數據篩選
+    displayedSongsData.value = songs.value.filter(song => song.genre === genre)
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadRandomSongs = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await musicAPI.getRandomSongs(6)
+    displayedSongsData.value = response.data.results || response.data
+    console.log('載入隨機歌曲成功:', displayedSongsData.value.length, '首')
+  } catch (err) {
+    error.value = '載入隨機歌曲失敗: ' + err.message
+    console.error('載入隨機歌曲失敗:', err)
+    // 如果 API 失敗，使用本地隨機
+    displayedSongsData.value = shuffleArray([...songs.value]).slice(0, 6)
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadLatestSongs = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await musicAPI.getLatestSongs(6)
+    displayedSongsData.value = response.data.results || response.data
+    console.log('載入最新歌曲成功:', displayedSongsData.value.length, '首')
+  } catch (err) {
+    error.value = '載入最新歌曲失敗: ' + err.message
+    console.error('載入最新歌曲失敗:', err)
+    // 如果 API 失敗，使用本地數據
+    displayedSongsData.value = songs.value.slice(0, 6)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 備用假數據（API 失敗時使用）
+const getFallbackSongs = () => [
   {
     id: 1,
     title: 'bomb',
-    artist: 'ILLIT',
+    artist: { name: 'ILLIT' },
+    album: { title: 'Super Real Me', cover_image: 'https://via.placeholder.com/200x200/333/fff?text=bomb' },
     genre: 'Pop',
-    image: 'https://via.placeholder.com/200x200/333/fff?text=bomb',
-    url: ''
+    audio_file: '',
+    duration: 210
   },
   {
     id: 2,
     title: 'Lemon Drop (Remix)',
-    artist: 'ATEEZ',
+    artist: { name: 'ATEEZ' },
+    album: { title: 'Golden Hour', cover_image: 'https://via.placeholder.com/200x200/FFA500/fff?text=Lemon' },
     genre: 'Hip-Hop',
-    image: 'https://via.placeholder.com/200x200/FFA500/fff?text=Lemon',
-    url: ''
+    audio_file: '',
+    duration: 195
   },
   {
     id: 3,
     title: 'GOLDEN HOUR : Part.3',
-    artist: 'ATEEZ',
+    artist: { name: 'ATEEZ' },
+    album: { title: 'Golden Hour Part.3', cover_image: 'https://via.placeholder.com/200x200/FFD700/000?text=Golden' },
     genre: 'Pop',
-    image: 'https://via.placeholder.com/200x200/FFD700/000?text=Golden',
-    url: ''
+    audio_file: '',
+    duration: 240
   },
   {
     id: 4,
     title: 'Girls Will Be Girls (Remix)',
-    artist: 'ITZY',
+    artist: { name: 'ITZY' },
+    album: { title: 'Gold', cover_image: 'https://via.placeholder.com/200x200/333/fff?text=Girls' },
     genre: 'Pop',
-    image: 'https://via.placeholder.com/200x200/333/fff?text=Girls',
-    url: ''
+    audio_file: '',
+    duration: 205
   },
   {
     id: 5,
     title: 'Girls Will Be Girls',
-    artist: 'ITZY',
+    artist: { name: 'ITZY' },
+    album: { title: 'Gold', cover_image: 'https://via.placeholder.com/200x200/333/fff?text=Girls' },
     genre: 'Pop',
-    image: 'https://via.placeholder.com/200x200/333/fff?text=Girls',
-    url: ''
+    audio_file: '',
+    duration: 200
   },
   {
     id: 6,
     title: 'DESIRE : UNLEASH',
-    artist: 'ENHYPEN',
+    artist: { name: 'ENHYPEN' },
+    album: { title: 'Romance Untold', cover_image: 'https://via.placeholder.com/200x200/000/fff?text=DESIRE' },
     genre: 'Rock',
-    image: 'https://via.placeholder.com/200x200/000/fff?text=DESIRE',
-    url: ''
-  },
-  {
-    id: 7,
-    title: 'Jazz Standards Vol.1',
-    artist: 'Various Artists',
-    genre: 'Jazz',
-    image: 'https://via.placeholder.com/200x200/8000FF/fff?text=Jazz',
-    url: ''
-  },
-  {
-    id: 8,
-    title: 'Country Roads',
-    artist: 'Country Stars',
-    genre: 'Country',
-    image: 'https://via.placeholder.com/200x200/8B4513/fff?text=Country',
-    url: ''
-  },
-  {
-    id: 9,
-    title: 'Rock Anthems',
-    artist: 'Rock Band',
-    genre: 'Rock',
-    image: 'https://via.placeholder.com/200x200/DC2626/fff?text=Rock',
-    url: ''
-  },
-  {
-    id: 10,
-    title: 'Electronic Beats',
-    artist: 'DJ Mix',
-    genre: 'Electronic',
-    image: 'https://via.placeholder.com/200x200/00FFFF/000?text=Electronic',
-    url: ''
+    audio_file: '',
+    duration: 220
   }
-])
+]
 
 // 計算屬性
 const progressPercentage = computed(() => {
@@ -333,6 +417,12 @@ const currentModeText = computed(() => {
 })
 
 const displayedSongs = computed(() => {
+  // 如果有 API 數據，使用 API 數據
+  if (displayedSongsData.value.length > 0) {
+    return displayedSongsData.value
+  }
+  
+  // 否則使用本地邏輯
   if (currentMode.value === 'random') {
     return shuffleArray([...songs.value]).slice(0, 6)
   } else if (currentMode.value === 'latest') {
@@ -352,22 +442,46 @@ const setSongsPerGenre = (num) => {
   songsPerGenre.value = num
 }
 
-const setCurrentMode = (mode) => {
+const setCurrentMode = async (mode) => {
   currentMode.value = mode
+  
+  // 根據模式載入不同數據
+  if (mode === 'random') {
+    await loadRandomSongs()
+  } else if (mode === 'latest') {
+    await loadLatestSongs()
+  } else if (genres.value.includes(mode)) {
+    await loadSongsByGenre(mode)
+  }
 }
 
 const togglePlay = () => {
-  isPlaying.value = !isPlaying.value
+  if (audioPlayer.value && currentSong.value.audio_file) {
+    if (isPlaying.value) {
+      audioPlayer.value.pause()
+    } else {
+      audioPlayer.value.play()
+    }
+    isPlaying.value = !isPlaying.value
+  }
 }
 
 const toggleMute = () => {
-  isMuted.value = !isMuted.value
+  if (audioPlayer.value) {
+    audioPlayer.value.muted = !audioPlayer.value.muted
+    isMuted.value = audioPlayer.value.muted
+  }
 }
 
 const playSong = (song) => {
   currentSong.value = song
-  if (song.url) {
+  if (audioPlayer.value && song.audio_file) {
+    audioPlayer.value.src = song.audio_file
+    audioPlayer.value.load()
+    audioPlayer.value.play()
     isPlaying.value = true
+  } else {
+    console.log('播放歌曲:', song.title, '(無音頻文件)')
   }
 }
 
@@ -385,10 +499,18 @@ const updateDuration = () => {
 
 const onSongEnd = () => {
   isPlaying.value = false
+  // 可以在這裡添加自動播放下一首的邏輯
 }
 
 const seek = (event) => {
-  // 進度條點擊跳轉邏輯
+  if (audioPlayer.value && event.currentTarget) {
+    const progressBar = event.currentTarget
+    const rect = progressBar.getBoundingClientRect()
+    const clickX = event.clientX - rect.left
+    const width = rect.width
+    const percentage = clickX / width
+    audioPlayer.value.currentTime = percentage * duration.value
+  }
 }
 
 const formatTime = (seconds) => {
@@ -406,6 +528,15 @@ const shuffleArray = (array) => {
   }
   return shuffled
 }
+
+// 🚀 生命週期：頁面載入時執行
+onMounted(() => {
+  console.log('App 組件已掛載，開始載入歌曲數據...')
+  loadAllSongs().then(() => {
+    // 載入完所有歌曲後，載入隨機歌曲
+    loadRandomSongs()
+  })
+})
 </script>
 
 <style scoped>
