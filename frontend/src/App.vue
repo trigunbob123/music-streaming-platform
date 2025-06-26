@@ -142,17 +142,17 @@
           </button>
           
           <audio ref="audioPlayer" @timeupdate="updateTime" @loadedmetadata="updateDuration" @ended="onSongEnd">
-            <source :src="currentSong.url" type="audio/mpeg">
+            <source :src="currentSong.audio_file" type="audio/mpeg">
             您的瀏覽器不支援音頻播放。
           </audio>
         </div>
 
         <!-- 當前播放歌曲信息 -->
         <div class="flex items-center justify-center mt-4" v-if="currentSong.title">
-          <img :src="currentSong.image" :alt="currentSong.title" class="w-12 h-12 rounded-lg object-cover mr-3">
+          <img :src="getImageUrl(currentSong.album?.cover_image)" :alt="currentSong.title" class="w-12 h-12 rounded-lg object-cover mr-3">
           <div class="text-left">
             <p class="font-medium text-sm">{{ currentSong.title }}</p>
-            <p class="text-xs text-gray-300">{{ currentSong.artist }}</p>
+            <p class="text-xs text-gray-300">{{ currentSong.artist?.name || currentSong.artist }}</p>
           </div>
         </div>
       </div>
@@ -176,63 +176,104 @@
           </button>
         </div>
 
-        <!--  載入狀態顯示 -->
-  <div v-if="loading" class="flex justify-center items-center h-32 mb-6">
-    <div class="flex items-center space-x-3 text-gray-600">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
-      <span class="text-lg">載入中...</span>
-    </div>
-  </div>
-  
-  <!-- 錯誤狀態顯示 -->
-  <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-    <div class="flex items-center">
-      <font-awesome-icon icon="exclamation-triangle" class="mr-2" />
-      {{ error }}
-    </div>
-  </div>
-
-        <!-- 隨機播放標題 -->
-        <div class="flex items-center mb-6">
-          <span class="bg-pink-500 text-white px-4 py-2 rounded-full font-bold">
-            <font-awesome-icon icon="random" class="mr-2" />
-            隨機播放
-          </span>
-          <span class="ml-4 text-gray-700 font-medium">{{ currentModeText }}</span>
-          <button class="ml-auto text-teal-500 hover:text-teal-600 font-medium">更多 ></button>
+        <!-- 載入狀態顯示 -->
+        <div v-if="loading" class="flex justify-center items-center h-32 mb-6">
+          <div class="flex items-center space-x-3 text-gray-600">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+            <span class="text-lg">載入中...</span>
+          </div>
+        </div>
+        
+        <!-- 錯誤狀態顯示 -->
+        <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          <div class="flex items-center">
+            <font-awesome-icon icon="exclamation-triangle" class="mr-2" />
+            {{ error }}
+            <button @click="retryLoad" class="ml-4 px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600">
+              重試
+            </button>
+          </div>
         </div>
 
-        <!-- 音樂卡片區域 -->
-        <div class="grid grid-cols-6 gap-4">
-  <div v-for="song in displayedSongs" :key="song.id" 
-       @click="playSong(song)"
-       class="music-card bg-white rounded-lg p-4 shadow-md hover:shadow-lg cursor-pointer transition-all duration-300">
-    <!-- 🔧 修改：支援 API 數據結構的圖片顯示 -->
-    <img :src="song.album?.cover_image || song.image || 'https://via.placeholder.com/200x200/666/fff?text=No+Image'" 
-         :alt="song.title" 
-         class="w-full h-32 object-cover rounded-lg mb-3"
-         @error="$event.target.src = 'https://via.placeholder.com/200x200/666/fff?text=Error'">
-    
-    <!-- 歌曲標題 - 保持不變 -->
-    <h3 class="font-bold text-sm text-gray-800 truncate">{{ song.title }}</h3>
-    
-    <!-- 🔧 修改：支援 API 數據結構的藝人顯示 -->
-    <p class="text-xs text-gray-600 truncate">{{ song.artist?.name || song.artist || '未知藝人' }}</p>
-    
-    <!-- 🆕 新增：歌曲時長顯示 -->
-    <p class="text-xs text-gray-500 mt-1" v-if="song.duration">
-      {{ formatTime(song.duration) }}
-    </p>
-  </div>
-  
-  <!-- 🆕 新增：無歌曲時的提示 -->
-  <div v-if="!loading && displayedSongs.length === 0" 
-       class="col-span-6 text-center py-12 text-gray-500">
-    <font-awesome-icon icon="music" class="text-4xl mb-4 text-gray-300" />
-    <p class="text-lg">沒有找到歌曲</p>
-    <p class="text-sm">請嘗試選擇其他曲風或重新載入</p>
-  </div>
+        <!-- 隨機播放標題 -->
+       <div class="flex items-center mb-6">
+  <span class="bg-pink-500 text-white px-4 py-2 rounded-full font-bold">
+    <font-awesome-icon icon="random" class="mr-2" />
+    隨機播放
+  </span>
+  <span class="ml-4 text-gray-700 font-medium">{{ currentModeText }}</span>
+  <button class="ml-auto text-teal-500 hover:text-teal-600 font-medium mr-2" @click="debugDisplayedSongs">
+    調試數據
+  </button>
+  <button class="text-blue-500 hover:text-blue-600 font-medium" @click="testAudioDirectly">
+    測試音頻
+  </button>
 </div>
+
+        <!-- 🔧 改進的音樂卡片區域 -->
+        <div class="grid grid-cols-6 gap-4">
+          <div v-for="song in displayedSongs" :key="song.id" 
+               @click="playSong(song)"
+               class="music-card bg-white rounded-lg p-4 shadow-md hover:shadow-lg cursor-pointer transition-all duration-300 border">
+            
+            <!-- 🔧 調試信息 -->
+            <div class="text-xs text-gray-400 mb-2">ID: {{ song.id }}</div>
+            
+            <!-- 🔧 改進的圖片顯示 -->
+            <div class="w-full h-32 bg-gray-200 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+              <img v-if="song.album?.cover_image" 
+                   :src="getImageUrl(song.album.cover_image)" 
+                   :alt="song.title" 
+                   class="w-full h-full object-cover"
+                   @error="handleImageError"
+                   @load="handleImageLoad">
+              <img v-else-if="song.image" 
+                   :src="getImageUrl(song.image)" 
+                   :alt="song.title" 
+                   class="w-full h-full object-cover"
+                   @error="handleImageError">
+              <div v-else class="text-gray-400 text-center">
+                <font-awesome-icon icon="music" class="text-2xl mb-2" />
+                <div class="text-xs">無封面</div>
+              </div>
+            </div>
+            
+            <!-- 歌曲標題 -->
+            <h3 class="font-bold text-sm text-gray-800 truncate mb-1">{{ song.title || '未知歌曲' }}</h3>
+            
+            <!-- 藝人顯示 -->
+            <p class="text-xs text-gray-600 truncate mb-1">
+              {{ song.artist?.name || song.artist || '未知藝人' }}
+            </p>
+            
+            <!-- 專輯顯示 -->
+            <p class="text-xs text-gray-500 truncate mb-1" v-if="song.album?.title">
+              {{ song.album.title }}
+            </p>
+            
+            <!-- 曲風和時長 -->
+            <div class="flex justify-between items-center text-xs text-gray-500">
+              <span>{{ song.genre || 'Unknown' }}</span>
+              <span v-if="song.duration">{{ formatTime(song.duration) }}</span>
+            </div>
+            
+            <!-- 音頻文件狀態 -->
+            <div class="text-xs mt-1" :class="song.audio_file ? 'text-green-500' : 'text-red-500'">
+              {{ song.audio_file ? '有音頻' : '無音頻' }}
+            </div>
+          </div>
+          
+          <!-- 無歌曲時的提示 -->
+          <div v-if="!loading && displayedSongs.length === 0" 
+               class="col-span-6 text-center py-12 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+            <font-awesome-icon icon="exclamation-triangle" class="text-4xl mb-4 text-gray-300" />
+            <p class="text-lg">沒有找到歌曲</p>
+            <p class="text-sm">當前模式：{{ currentModeText }}</p>
+            <button @click="retryLoad" class="mt-4 px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600">
+              重新載入
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -240,7 +281,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { musicAPI } from './services/api'
+import { musicAPI, testConnection } from './services/api'
 
 // 響應式數據
 const genres = ref(['Pop', 'Rock', 'Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Country', 'Latin', 'R&B', 'Folk'])
@@ -265,6 +306,145 @@ const displayedSongsData = ref([])
 
 // 音頻播放器引用
 const audioPlayer = ref(null)
+
+// 🔧 添加圖片 URL 處理函數
+const getImageUrl = (imagePath) => {
+  console.log('🖼️ 處理圖片路徑:', imagePath)
+  
+  if (!imagePath || imagePath === 'undefined' || imagePath === null || imagePath === 'null') {
+    console.log('🖼️ 無圖片，使用 placeholder')
+    return 'https://via.placeholder.com/300x300/666/fff?text=No+Image'
+  }
+  
+  // 如果已經是完整的 HTTPS URL，直接返回
+  if (imagePath.startsWith('https://') || imagePath.startsWith('http://')) {
+    console.log('🖼️ 使用完整 URL:', imagePath)
+    return imagePath
+  }
+  
+  // 如果是相對路徑，拼接後端域名
+  const baseURL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://127.0.0.1:8000'
+    : `http://${window.location.hostname}:8000`
+    
+  const fullUrl = `${baseURL}/media/${imagePath}`
+  console.log('🖼️ 拼接相對路徑:', fullUrl)
+  return fullUrl
+}
+
+// 🔧 修正的圖片錯誤處理
+const handleImageError = (event) => {
+  console.warn('🖼️ 圖片載入失敗:', event.target.src)
+  // 使用更穩定的 placeholder
+  event.target.src = 'https://via.placeholder.com/300x300/ff6b6b/fff?text=Error'
+}
+
+const handleImageLoad = (event) => {
+  console.log('🖼️ 圖片載入成功:', event.target.src)
+}
+
+// 🔧 添加調試函數
+const debugDisplayedSongs = () => {
+  console.log('🔍 當前顯示的歌曲:', displayedSongs.value)
+  displayedSongs.value.forEach((song, index) => {
+    console.log(`🔍 歌曲 ${index + 1}:`, {
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
+      cover_image: song.album?.cover_image,
+      audio_file: song.audio_file,
+      genre: song.genre
+    })
+  })
+}
+
+const debugSongData = (song) => {
+  console.log('🔍 完整歌曲數據:', song)
+  console.log('🔍 歌曲字段:')
+  console.log('  - id:', song.id)
+  console.log('  - title:', song.title)
+  console.log('  - audio_file:', song.audio_file)
+  console.log('  - audioFile:', song.audioFile)
+  console.log('  - album:', song.album)
+  console.log('  - album.cover_image:', song.album?.cover_image)
+  console.log('  - 所有字段:', Object.keys(song))
+  
+  // 檢查音頻文件
+  if (song.audio_file) {
+    console.log('🎵 音頻文件存在:', song.audio_file)
+  } else {
+    console.warn('🎵 音頻文件不存在')
+  }
+  
+  // 檢查封面圖片
+  if (song.album?.cover_image) {
+    console.log('🖼️ 封面圖片存在:', song.album.cover_image)
+  } else {
+    console.warn('🖼️ 封面圖片不存在')
+  }
+}
+
+// 🧪 添加測試函數
+const testAudioDirectly = () => {
+  console.log('🧪 直接測試音頻播放...')
+  const testUrls = [
+    "https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3",
+    "https://www.w3schools.com/html/horse.mp3",
+    "https://mdn.github.io/learning-area/html/multimedia-and-embedding/video-and-audio-content/viper.mp3"
+  ]
+  
+  let currentIndex = 0
+  
+  const tryNextAudio = () => {
+    if (currentIndex >= testUrls.length) {
+      console.error('🧪 所有測試音頻都失敗了')
+      return
+    }
+    
+    const testUrl = testUrls[currentIndex]
+    console.log(`🧪 測試音頻 ${currentIndex + 1}:`, testUrl)
+    
+    if (audioPlayer.value) {
+      audioPlayer.value.src = testUrl
+      audioPlayer.value.load()
+      
+      audioPlayer.value.oncanplay = () => {
+        console.log('🧪 測試音頻可以播放:', testUrl)
+        audioPlayer.value.play().then(() => {
+          isPlaying.value = true
+          console.log('🧪 測試播放成功!')
+        }).catch(error => {
+          console.error('🧪 測試播放失敗:', error)
+          currentIndex++
+          tryNextAudio()
+        })
+      }
+      
+      audioPlayer.value.onerror = (e) => {
+        console.error('🧪 測試音頻載入失敗:', e)
+        currentIndex++
+        tryNextAudio()
+      }
+    }
+  }
+  
+  tryNextAudio()
+}
+
+// 🔧 添加重試函數
+const retryLoad = () => {
+  error.value = null
+  if (currentMode.value === 'random') {
+    loadRandomSongs()
+  } else if (currentMode.value === 'latest') {
+    loadLatestSongs()
+  } else if (genres.value.includes(currentMode.value)) {
+    loadSongsByGenre(currentMode.value)
+  } else {
+    loadAllSongs().then(() => loadRandomSongs())
+  }
+}
 
 // 🔄 API 方法
 const loadAllSongs = async () => {
@@ -473,15 +653,54 @@ const toggleMute = () => {
   }
 }
 
+// 🔧 改進 playSong 函數
 const playSong = (song) => {
+  console.log('🎵 選擇播放歌曲:', song.title)
+  
+  // 🔍 添加詳細調試
+  debugSongData(song)
+  
+  // 停止當前播放
+  if (audioPlayer.value) {
+    audioPlayer.value.pause()
+    audioPlayer.value.currentTime = 0
+  }
+  
   currentSong.value = song
-  if (audioPlayer.value && song.audio_file) {
-    audioPlayer.value.src = song.audio_file
-    audioPlayer.value.load()
-    audioPlayer.value.play()
-    isPlaying.value = true
+  
+  // 🔧 檢查多個可能的字段名稱
+  let audioUrl = song.audio_file || song.audioFile || song.audiourl || null
+  
+  console.log('🎵 檢測到的音頻 URL:', audioUrl)
+  
+  if (audioUrl && audioUrl !== 'undefined' && audioUrl !== 'null') {
+    console.log('🎵 準備播放:', audioUrl)
+    
+    if (audioPlayer.value) {
+      audioPlayer.value.src = audioUrl
+      
+      // 添加事件監聽器
+      audioPlayer.value.oncanplay = () => {
+        console.log('🎵 音頻可以播放')
+        audioPlayer.value.play().then(() => {
+          isPlaying.value = true
+          console.log('🎵 播放成功:', song.title)
+        }).catch(error => {
+          console.error('🎵 播放失敗:', error)
+          console.error('🎵 失敗的 URL:', audioUrl)
+        })
+      }
+      
+      audioPlayer.value.onerror = (e) => {
+        console.error('🎵 音頻載入錯誤:', e)
+        console.error('🎵 錯誤的 URL:', audioUrl)
+      }
+      
+      audioPlayer.value.load()
+    }
   } else {
-    console.log('播放歌曲:', song.title, '(無音頻文件)')
+    console.warn('🎵 找不到音頻文件字段:', song)
+    console.warn('🎵 可用字段:', Object.keys(song))
   }
 }
 
@@ -530,13 +749,42 @@ const shuffleArray = (array) => {
 }
 
 // 🚀 生命週期：頁面載入時執行
-onMounted(() => {
-  console.log('App 組件已掛載，開始載入歌曲數據...')
+onMounted(async () => {
+  console.log('🚀 App 組件已掛載，開始連接測試...')
+  
+  // 測試後端連接
+  const isConnected = await testConnection()
+  if (!isConnected) {
+    error.value = '無法連接到後端服務器，請確認服務器是否正在運行'
+    return
+  }
+  
+  // 如果連接成功，繼續載入數據
   loadAllSongs().then(() => {
-    // 載入完所有歌曲後，載入隨機歌曲
-    loadRandomSongs()
+    loadRandomSongs().then(() => {
+      // 載入完成後進行調試
+      setTimeout(debugDisplayedSongs, 1000)
+    })
   })
 })
+
+// 在某個按鈕點擊事件中測試
+const testAudio = () => {
+  const testUrl = "https://www.soundjay.com/misc/sounds/coin-drop-4.mp3"
+  console.log('🎵 測試播放:', testUrl)
+  
+  if (audioPlayer.value) {
+    audioPlayer.value.src = testUrl
+    audioPlayer.value.load()
+    audioPlayer.value.play().then(() => {
+      console.log('🎵 測試播放成功！')
+      isPlaying.value = true
+    }).catch(error => {
+      console.error('🎵 測試播放失敗:', error)
+    })
+  }
+}
+
 </script>
 
 <style scoped>

@@ -1,13 +1,30 @@
 import axios from 'axios'
 
+// 🔧 動態 API 基礎 URL 配置
+const getApiBaseURL = () => {
+  const hostname = window.location.hostname
+  
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://127.0.0.1:8000'
+  } else {
+    // 使用當前主機的 IP，但改為 8000 端口
+    return `http://${hostname}:8000`
+  }
+}
+
 // 建立 axios 實例
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000',
-  timeout: 10000,
+  baseURL: getApiBaseURL(),
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   }
 })
+
+// 調試信息
+console.log('🌐 API Base URL:', getApiBaseURL())
+console.log('🌐 Current Hostname:', window.location.hostname)
 
 // 請求攔截器
 apiClient.interceptors.request.use(
@@ -23,17 +40,42 @@ apiClient.interceptors.request.use(
 // 響應攔截器
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('API 響應成功:', response.data)
+    console.log('✅ API 響應成功:', response.data)
     return response
   },
   (error) => {
-    console.error('API 請求錯誤:', error.response?.data || error.message)
+    if (error.code === 'ERR_NETWORK') {
+      console.error('❌ 網路連接錯誤: 無法連接到後端服務器')
+      console.error(`請確認後端服務器是否在 ${getApiBaseURL()} 運行`)
+    } else {
+      console.error('❌ API 請求錯誤:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url
+      })
+    }
     return Promise.reject(error)
   }
 )
 
+// ✅ 添加 testConnection 函數
+export const testConnection = async () => {
+  try {
+    const response = await apiClient.get('/api/music/songs/')
+    console.log('🎉 後端連接測試成功')
+    return true
+  } catch (error) {
+    console.error('❌ 後端連接測試失敗:', error.message)
+    return false
+  }
+}
+
 // 音樂 API 服務
 export const musicAPI = {
+  // 測試連接
+  testConnection,
+  
   // 獲取所有歌曲
   getAllSongs: () => apiClient.get('/api/music/songs/'),
   
