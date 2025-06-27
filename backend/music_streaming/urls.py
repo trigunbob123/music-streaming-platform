@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/music/', include('apps.music.urls')),
     path('api/users/', include('apps.users.urls')),
     path('api/playlists/', include('apps.playlists.urls')),
+    path('api/spotify/', include('apps.spotify.urls')),
 ]
 
 # 添加媒體文件服務

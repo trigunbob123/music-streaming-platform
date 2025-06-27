@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.playlists',
     'apps.streaming',
+    'apps.spotify',
+    
 ]
 
 MIDDLEWARE = [
@@ -131,18 +133,39 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
-        'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
         'rest_framework.renderers.JSONRenderer',
     ],
     'DEFAULT_PARSER_CLASSES': [
-        'djangorestframework_camel_case.parser.CamelCaseJSONParser',
         'rest_framework.parsers.JSONParser',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # 開發階段簡化
-    ]
+        'rest_framework.permissions.AllowAny',
+    ],
+    # 添加異常處理
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+}
+
+# 日誌設定（用於調試）
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'apps.music': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
 }
 
 # CORS
@@ -154,14 +177,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.73.125:3000",
 ]
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True  # 僅開發環境使用
+CORS_ALLOW_ALL_ORIGINS = DEBUG  # 僅開發環境使用
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Static files
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # AWS S3 (用於生產環境)
 if not DEBUG:
@@ -186,4 +209,5 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'cache-control',
 ]

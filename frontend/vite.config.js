@@ -1,3 +1,4 @@
+// frontend/vite.config.js
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
@@ -5,8 +6,8 @@ import path from 'path'
 export default defineConfig({
   plugins: [vue()],
   server: {
-    port: 3000,        
-    host: '0.0.0.0',   
+    port: 3000,        // 改回 3000 端口
+    host: '127.0.0.1', // 使用 127.0.0.1 而不是 0.0.0.0
     strictPort: true,  
     proxy: {
       '/api': {
