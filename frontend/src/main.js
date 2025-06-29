@@ -14,12 +14,13 @@ import {
   faPause, 
   faVolumeUp, 
   faVolumeMute,
-  faVolumeDown,  // 新增
+  faVolumeDown,
   faRandom, 
   faMusic, 
   faStar, 
   faVideo, 
-  faHeart,
+  faHeartBroken,
+  faHeart as faHeartSolid,  // 實心愛心，重新命名
   faList, 
   faSearch, 
   faUser, 
@@ -27,17 +28,22 @@ import {
   faChevronDown, 
   faLink,
   faExclamationTriangle,
-  faStepBackward,  // 新增
-  faStepForward,   // 新增
-  faRepeat,        // 新增
-  faRedo,          // 新增
-  faFire           // 新增
+  faStepBackward,
+  faStepForward,
+  faRepeat,
+  faRedo,
+  faFire
 } from '@fortawesome/free-solid-svg-icons'
+
+// 新增空心圖標
+import { 
+  faHeart as faHeartRegular  // 空心愛心
+} from '@fortawesome/free-regular-svg-icons'
 
 import { 
   faFacebook, 
   faTwitter,
-  faSpotify        // 新增 Spotify 圖標
+  faSpotify
 } from '@fortawesome/free-brands-svg-icons'
 
 // 添加圖標到庫
@@ -49,9 +55,11 @@ library.add(
   faVolumeDown,
   faRandom, 
   faMusic, 
+  faHeartBroken,
   faStar, 
   faVideo, 
-  faHeart,
+  faHeartSolid,    // 實心愛心
+  faHeartRegular,  // 空心愛心
   faList, 
   faSearch, 
   faUser, 
