@@ -22,7 +22,7 @@ export function useSpotify() {
   
   // 🔧 Spotify 配置
   const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-  const REDIRECT_URI = 'http://127.0.0.1:3000'
+  const REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || 'http://127.0.0.1:3000'
   const SCOPES = [
     'streaming',
     'user-read-email',
@@ -37,12 +37,10 @@ export function useSpotify() {
   // 檢查配置
   const checkConfig = () => {
     if (!CLIENT_ID) {
-      console.error('❌ 未設置 VITE_SPOTIFY_CLIENT_ID')
+      console.warn('⚠️ 未設置 VITE_SPOTIFY_CLIENT_ID，Spotify 功能將被禁用')
       return false
     }
     console.log('✅ Spotify 配置檢查通過')
-    console.log('Client ID:', CLIENT_ID)
-    console.log('Redirect URI:', REDIRECT_URI)
     return true
   }
 
@@ -116,7 +114,7 @@ export function useSpotify() {
     console.log('🎵 開始連接 Spotify...')
     
     if (!checkConfig()) {
-      alert('❌ Spotify 配置錯誤，請檢查環境變數設置')
+      console.warn('⚠️ Spotify 配置不完整，無法連接')
       return
     }
 
@@ -247,13 +245,12 @@ export function useSpotify() {
 
       spotifyPlayer.value.addListener('not_ready', ({ device_id }) => {
         console.log('⚠️ 設備離線:', device_id)
-        isSpotifyConnected.value = false
       })
 
       spotifyPlayer.value.addListener('player_state_changed', (state) => {
         if (!state) return
 
-        console.log('🎵 播放狀態更新:', state)
+        console.log('🎵 播放狀態更新')
         currentTrack.value = state.track_window.current_track
         isPlaying.value = !state.paused
         currentTime.value = Math.floor(state.position / 1000)
@@ -266,7 +263,6 @@ export function useSpotify() {
 
       spotifyPlayer.value.addListener('initialization_error', ({ message }) => {
         console.error('❌ 播放器初始化失敗:', message)
-        alert('播放器初始化失敗: ' + message)
       })
 
       spotifyPlayer.value.addListener('authentication_error', ({ message }) => {
@@ -294,7 +290,7 @@ export function useSpotify() {
     }
   }
 
-  // Spotify API 請求包裝
+  // 🔧 改進的 Spotify API 請求包裝（修正 JSON 錯誤）
   const spotifyAPI = async (endpoint, options = {}) => {
     const url = `https://api.spotify.com/v1${endpoint}`
     const headers = {
@@ -304,10 +300,14 @@ export function useSpotify() {
     }
 
     try {
+      console.log('🔄 發送 Spotify API 請求:', endpoint)
+      
       const response = await fetch(url, {
         ...options,
         headers
       })
+
+      console.log('📨 API 響應狀態:', response.status, response.statusText)
 
       if (response.status === 401) {
         console.log('🔄 Token 可能已過期，嘗試刷新...')
@@ -316,11 +316,66 @@ export function useSpotify() {
         return spotifyAPI(endpoint, options)
       }
 
-      if (!response.ok) {
-        throw new Error(`Spotify API 錯誤: ${response.status} ${response.statusText}`)
+      if (response.status === 404) {
+        throw new Error('未找到活躍的播放設備。請確保你的 Spotify 應用正在運行並播放音樂。')
       }
 
-      return await response.json()
+      if (response.status === 403) {
+        throw new Error('操作被禁止。請確保你有 Spotify Premium 帳戶。')
+      }
+
+      if (!response.ok) {
+        // 嘗試讀取錯誤響應
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        try {
+          const errorData = await response.json()
+          if (errorData.error && errorData.error.message) {
+            errorMessage = errorData.error.message
+          }
+        } catch (parseError) {
+          console.log('⚠️ 無法解析錯誤響應 JSON')
+        }
+        throw new Error(errorMessage)
+      }
+
+      // 🔧 修正：檢查響應是否有內容
+      const contentLength = response.headers.get('content-length')
+      const contentType = response.headers.get('content-type')
+      
+      console.log('📋 響應詳情:', {
+        contentLength,
+        contentType,
+        hasContent: contentLength !== '0'
+      })
+
+      // 如果是 PUT/POST 請求且返回 204 No Content，直接返回成功
+      if (response.status === 204 || contentLength === '0') {
+        console.log('✅ 操作成功 (無響應內容)')
+        return { success: true }
+      }
+
+      // 只有當有內容且是 JSON 時才嘗試解析
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          const data = await response.json()
+          console.log('✅ JSON 解析成功')
+          return data
+        } catch (jsonError) {
+          console.error('❌ JSON 解析失敗:', jsonError)
+          // 如果 JSON 解析失敗但狀態碼是成功的，說明操作可能成功了
+          if (response.ok) {
+            console.log('✅ 操作可能成功 (JSON 解析失敗但狀態碼正常)')
+            return { success: true }
+          }
+          throw new Error('響應格式錯誤')
+        }
+      } else {
+        // 非 JSON 響應
+        const text = await response.text()
+        console.log('📝 非 JSON 響應:', text)
+        return { success: true, data: text }
+      }
+
     } catch (error) {
       console.error('❌ Spotify API 請求失敗:', error)
       throw error
@@ -367,23 +422,38 @@ export function useSpotify() {
     }
   }
 
-  // 🎵 播放控制
+  // 🎵 播放控制（改進錯誤處理）
   const playTrack = async (track) => {
     try {
-      console.log('🎵 播放歌曲:', track.name)
+      console.log('🎵 嘗試播放歌曲:', track.name)
       
       const uris = track.uri ? [track.uri] : [`spotify:track:${track.id}`]
       
-      await spotifyAPI('/me/player/play', {
+      // 嘗試播放
+      const result = await spotifyAPI('/me/player/play', {
         method: 'PUT',
         body: JSON.stringify({
-          device_id: deviceId.value,
           uris: uris
         })
       })
+      
+      console.log('✅ 播放請求成功')
+      
     } catch (error) {
       console.error('❌ 播放失敗:', error)
-      alert('播放失敗: ' + error.message)
+      
+      // 提供更友好的錯誤信息
+      let userMessage = error.message
+      
+      if (error.message.includes('404')) {
+        userMessage = '請先在 Spotify 手機或桌面應用中開始播放任何歌曲，然後再試一次'
+      } else if (error.message.includes('403')) {
+        userMessage = '需要 Spotify Premium 帳戶才能播放音樂'
+      } else if (error.message.includes('Unexpected end of JSON input')) {
+        userMessage = 'Spotify 服務暫時不可用，請稍後再試'
+      }
+      
+      alert('播放失敗: ' + userMessage)
     }
   }
 
@@ -391,17 +461,21 @@ export function useSpotify() {
     try {
       if (isPlaying.value) {
         await spotifyAPI('/me/player/pause', { method: 'PUT' })
+        console.log('⏸️ 暫停播放')
       } else {
         await spotifyAPI('/me/player/play', { method: 'PUT' })
+        console.log('▶️ 恢復播放')
       }
     } catch (error) {
       console.error('❌ 切換播放狀態失敗:', error)
+      alert('操作失敗: 請確保 Spotify 正在運行並播放音樂')
     }
   }
 
   const previousTrack = async () => {
     try {
       await spotifyAPI('/me/player/previous', { method: 'POST' })
+      console.log('⏮️ 上一首')
     } catch (error) {
       console.error('❌ 上一首失敗:', error)
     }
@@ -410,26 +484,58 @@ export function useSpotify() {
   const nextTrack = async () => {
     try {
       await spotifyAPI('/me/player/next', { method: 'POST' })
+      console.log('⏭️ 下一首')
     } catch (error) {
       console.error('❌ 下一首失敗:', error)
     }
   }
 
-  const seek = async (positionMs) => {
+  const seek = async (event) => {
+    if (!duration.value) return
+    
     try {
+      const rect = event.currentTarget.getBoundingClientRect()
+      const clickX = event.clientX - rect.left
+      const progressPercent = clickX / rect.width
+      const positionMs = Math.floor(progressPercent * duration.value * 1000)
+      
       await spotifyAPI(`/me/player/seek?position_ms=${positionMs}`, { method: 'PUT' })
+      console.log('🎯 跳轉到:', Math.floor(positionMs / 1000), '秒')
     } catch (error) {
       console.error('❌ 跳轉失敗:', error)
     }
   }
 
-  const setVolume = async (volumePercent = null) => {
+  // 🔧 修正 setVolume 函數
+  const setVolume = async (volumePercent) => {
     try {
-      const newVolume = volumePercent !== null ? volumePercent : (volume.value + 10) % 110
+      // 確保 volumePercent 是數字
+      let newVolume
+      
+      if (volumePercent !== undefined && volumePercent !== null) {
+        // 如果傳入了具體數值，使用該數值
+        newVolume = parseInt(volumePercent)
+      } else {
+        // 如果沒有傳入數值，增加音量
+        newVolume = (volume.value + 25) % 125
+        if (newVolume > 100) newVolume = 0
+      }
+      
+      // 確保音量在有效範圍內
+      newVolume = Math.max(0, Math.min(100, newVolume))
+      
+      console.log('🔊 設置音量為:', newVolume + '%')
+      
+      // 更新本地狀態
       volume.value = newVolume
+      
+      // 發送到 Spotify API
       await spotifyAPI(`/me/player/volume?volume_percent=${newVolume}`, { method: 'PUT' })
+      
+      console.log('✅ 音量設置成功')
     } catch (error) {
       console.error('❌ 設置音量失敗:', error)
+      // 不要顯示音量錯誤的 alert，因為這會干擾用戶體驗
     }
   }
 
@@ -437,6 +543,7 @@ export function useSpotify() {
     try {
       const newShuffleState = !isShuffled.value
       await spotifyAPI(`/me/player/shuffle?state=${newShuffleState}`, { method: 'PUT' })
+      console.log('🔀 隨機播放:', newShuffleState ? '開啟' : '關閉')
     } catch (error) {
       console.error('❌ 切換隨機播放失敗:', error)
     }
@@ -449,6 +556,7 @@ export function useSpotify() {
       const nextMode = modes[(currentIndex + 1) % modes.length]
       
       await spotifyAPI(`/me/player/repeat?state=${nextMode}`, { method: 'PUT' })
+      console.log('🔁 重複模式:', nextMode)
     } catch (error) {
       console.error('❌ 切換重複模式失敗:', error)
     }
@@ -457,6 +565,8 @@ export function useSpotify() {
   // 🔍 搜尋功能
   const searchTracks = async (query, type = 'track') => {
     try {
+      if (!query.trim()) return []
+      
       const params = new URLSearchParams({
         q: query,
         type: type,
@@ -474,11 +584,17 @@ export function useSpotify() {
   // 獲取推薦
   const getRecommendations = async () => {
     try {
-      const data = await spotifyAPI('/recommendations?seed_genres=pop,rock,hip-hop&limit=20')
+      const data = await spotifyAPI('/recommendations?seed_genres=pop&limit=20')
       return data.tracks || []
     } catch (error) {
       console.error('❌ 獲取推薦失敗:', error)
-      return []
+      try {
+        const fallbackData = await spotifyAPI('/search?q=year:2024&type=track&limit=20')
+        return fallbackData.tracks?.items || []
+      } catch (fallbackError) {
+        console.error('❌ 備用搜尋也失敗:', fallbackError)
+        return []
+      }
     }
   }
 
@@ -498,6 +614,9 @@ export function useSpotify() {
     try {
       const data = await spotifyAPI('/me/player/devices')
       spotifyDevices.value = data.devices || []
+      
+      console.log('🎮 可用設備:', spotifyDevices.value.map(d => ({ name: d.name, id: d.id, is_active: d.is_active })))
+      
       return spotifyDevices.value
     } catch (error) {
       console.error('❌ 獲取設備失敗:', error)
@@ -507,10 +626,10 @@ export function useSpotify() {
 
   // 生命週期
   onMounted(async () => {
-    console.log('🚀 useSpotify 組件已掛載 (真實模式)')
+    console.log('🚀 useSpotify 組件已掛載')
     
     if (!checkConfig()) {
-      console.log('💡 提示：請設置 VITE_SPOTIFY_CLIENT_ID 以啟用 Spotify 功能')
+      console.log('💡 提示：Spotify 功能已禁用，需要正確的配置')
       return
     }
     
