@@ -94,18 +94,14 @@
 
           <!-- 右側：播放控制和音量 -->
           <div class="flex items-center space-x-4 flex-shrink-0">
-            <!-- 音頻均衡器視覺效果 - 移回播放按鈕左邊 -->
-            <div class="audio-visualizer" v-if="currentTrack.name">
+            <!-- 音頻均衡器視覺效果 - 總是顯示 -->
+            <div class="audio-visualizer">
               <div class="equalizer-bars">
                 <div 
                   v-for="i in 16" 
                   :key="i" 
                   class="equalizer-bar" 
                   :class="{ 'playing': isPlaying }"
-                  :style="{ 
-                    animationDelay: `${(i - 1) * 0.1}s`,
-                    height: isPlaying ? `${Math.random() * 60 + 20}%` : '20%'
-                  }"
                 ></div>
               </div>
             </div>
@@ -165,31 +161,129 @@
       </div>
 
       <!-- 搜尋欄 -->
-      <div class="p-6 pb-0" v-if="isSpotifyConnected">
+      <div class="p-2 pb-0" v-if="isSpotifyConnected">
         <div class="relative inline-block w-full">
           <input v-model="searchQuery" @input="searchTracks" 
                  placeholder="🔎搜尋歌曲、藝人或專輯..." 
-                 class="w-full py-3 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                 class="w-full py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
       </div>
 
       <!-- 曲風按鈕 -->
       <div class="p-6">
-        <div class="grid grid-cols-5 gap-4 mb-8" v-if="isSpotifyConnected && currentMode !== 'favorites'">
-          <button v-for="genre in spotifyGenres.slice(0, 5)" :key="genre" 
-                  @click="searchByGenre(genre)"
-                  class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105 active:animate-bounce"
-                  :class="selectedGenre === genre ? 'bg-pink-500' : 'bg-blue-800'">
-            {{ genre }}
-          </button>
+        <!-- 新的播放隊列控制區 - 簡單版本 -->
+        <div class="playlist-control-panel" v-if="isSpotifyConnected">
+          <div class="playlist-controls">
+            <!-- 第一組 -->
+            <div class="control-group">
+              <div class="dropdown-wrapper">
+                <button class="genre-btn-simple" @click="toggleGenreDropdown(0)">
+                  {{ playlistConfig[0].genre }} ▼
+                </button>
+                <div v-if="genreDropdownOpen[0]" class="dropdown-simple">
+                  <div v-for="genre in availableGenres" :key="genre" 
+                       @click="selectGenre(0, genre)" class="dropdown-item">
+                    {{ genre }}
+                  </div>
+                </div>
+              </div>
+              <div class="dropdown-wrapper">
+                <button class="number-btn-simple" @click="toggleNumberDropdown(0)">
+                  {{ playlistConfig[0].count }} ▼
+                </button>
+                <div v-if="numberDropdownOpen[0]" class="dropdown-simple">
+                  <div v-for="num in [1,2,3,4,5]" :key="num" 
+                       @click="selectNumber(0, num)" class="dropdown-item">
+                    {{ num }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <span class="plus-sign">+</span>
+
+            <!-- 第二組 -->
+            <div class="control-group">
+              <div class="dropdown-wrapper">
+                <button class="genre-btn-simple" @click="toggleGenreDropdown(1)">
+                  {{ playlistConfig[1].genre }} ▼
+                </button>
+                <div v-if="genreDropdownOpen[1]" class="dropdown-simple">
+                  <div v-for="genre in availableGenres" :key="genre" 
+                       @click="selectGenre(1, genre)" class="dropdown-item">
+                    {{ genre }}
+                  </div>
+                </div>
+              </div>
+              <div class="dropdown-wrapper">
+                <button class="number-btn-simple" @click="toggleNumberDropdown(1)">
+                  {{ playlistConfig[1].count }} ▼
+                </button>
+                <div v-if="numberDropdownOpen[1]" class="dropdown-simple">
+                  <div v-for="num in [1,2,3,4,5]" :key="num" 
+                       @click="selectNumber(1, num)" class="dropdown-item">
+                    {{ num }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <span class="plus-sign">+</span>
+
+            <!-- 第三組 -->
+            <div class="control-group">
+              <div class="dropdown-wrapper">
+                <button class="genre-btn-simple" @click="toggleGenreDropdown(2)">
+                  {{ playlistConfig[2].genre }} ▼
+                </button>
+                <div v-if="genreDropdownOpen[2]" class="dropdown-simple">
+                  <div v-for="genre in availableGenres" :key="genre" 
+                       @click="selectGenre(2, genre)" class="dropdown-item">
+                    {{ genre }}
+                  </div>
+                </div>
+              </div>
+              <div class="dropdown-wrapper">
+                <button class="number-btn-simple" @click="toggleNumberDropdown(2)">
+                  {{ playlistConfig[2].count }} ▼
+                </button>
+                <div v-if="numberDropdownOpen[2]" class="dropdown-simple">
+                  <div v-for="num in [1,2,3,4,5]" :key="num" 
+                       @click="selectNumber(2, num)" class="dropdown-item">
+                    {{ num }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button class="play-btn-simple" @click="startCustomPlaylist">
+              ▶ 播放
+            </button>
+          </div>
+          
+          <div v-if="customPlaylistActive" class="playlist-status">
+            當前播放：{{ currentPlaylistStatus }}
+          </div>
         </div>
-        <div class="grid grid-cols-5 gap-4 mb-8" v-if="isSpotifyConnected && currentMode !== 'favorites'">
-          <button v-for="genre in spotifyGenres.slice(5, 10)" :key="genre" 
-                  @click="searchByGenre(genre)"
-                  class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105 active:animate-bounce"
-                  :class="selectedGenre === genre ? 'bg-pink-500' : 'bg-blue-800'">
-            {{ genre }}
-          </button>
+
+        <!-- 原有的曲風按鈕 - 確保顯示 -->
+        <div v-if="isSpotifyConnected && currentMode !== 'favorites'">
+          <div class="grid grid-cols-5 gap-4 mb-4">
+            <button v-for="genre in spotifyGenres.slice(0, 5)" :key="genre" 
+                    @click="searchByGenre(genre)"
+                    class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105 active:animate-bounce"
+                    :class="selectedGenre === genre ? 'bg-pink-500' : 'bg-blue-800'">
+              {{ genre.toUpperCase() }}
+            </button>
+          </div>
+          <div class="grid grid-cols-5 gap-4 mb-8">
+            <button v-for="genre in spotifyGenres.slice(5, 10)" :key="genre" 
+                    @click="searchByGenre(genre)"
+                    class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105 active:animate-bounce"
+                    :class="selectedGenre === genre ? 'bg-pink-500' : 'bg-blue-800'">
+              {{ genre.toUpperCase() }}
+            </button>
+          </div>
         </div>
 
         <!-- 我的收藏標題 -->
@@ -417,6 +511,147 @@ const spotifyGenres = ref([
   'classical', 'country', 'latin', 'r&b', 'folk'
 ])
 
+// 新增：自定義播放隊列功能
+const availableGenres = ref(['Jazz', 'Country', 'Rock', 'Pop', 'Hip-Hop', 'Electronic', 'Classical', 'Latin', 'R&B', 'Folk'])
+
+// 播放隊列配置
+const playlistConfig = ref([
+  { genre: 'Jazz', count: 3 },
+  { genre: 'Country', count: 5 },
+  { genre: 'Rock', count: 1 }
+])
+
+// 下拉選單狀態
+const genreDropdownOpen = ref([false, false, false])
+const numberDropdownOpen = ref([false, false, false])
+
+// 自定義播放隊列狀態
+const customPlaylistActive = ref(false)
+const currentPlaylistQueue = ref([])
+const currentPlaylistIndex = ref(0)
+const currentPlaylistStatus = ref('')
+
+// 下拉選單控制函數
+const toggleGenreDropdown = (index) => {
+  genreDropdownOpen.value = genreDropdownOpen.value.map((_, i) => i === index ? !genreDropdownOpen.value[i] : false)
+  numberDropdownOpen.value = [false, false, false]
+}
+
+const toggleNumberDropdown = (index) => {
+  numberDropdownOpen.value = numberDropdownOpen.value.map((_, i) => i === index ? !numberDropdownOpen.value[i] : false)
+  genreDropdownOpen.value = [false, false, false]
+}
+
+const selectGenre = (index, genre) => {
+  playlistConfig.value[index].genre = genre
+  genreDropdownOpen.value[index] = false
+}
+
+const selectNumber = (index, number) => {
+  playlistConfig.value[index].count = number
+  numberDropdownOpen.value[index] = false
+}
+
+// 開始自定義播放隊列
+const startCustomPlaylist = async () => {
+  try {
+    loading.value = true
+    customPlaylistActive.value = true
+    currentPlaylistQueue.value = []
+    currentPlaylistIndex.value = 0
+    
+    console.log('🎵 開始建立自定義播放隊列...')
+    
+    // 根據配置獲取歌曲
+    for (let i = 0; i < playlistConfig.value.length; i++) {
+      const config = playlistConfig.value[i]
+      console.log(`📀 獲取 ${config.genre} 曲風的 ${config.count} 首歌曲...`)
+      
+      const searchGenre = config.genre.toLowerCase().replace('-', ' ')
+      
+      try {
+        const genreTracks = await spotifySearch(`genre:${searchGenre}`, 'track')
+        if (genreTracks && genreTracks.length > 0) {
+          const shuffledTracks = [...genreTracks].sort(() => Math.random() - 0.5)
+          const selectedTracks = shuffledTracks.slice(0, config.count).map(track => ({
+            ...track,
+            genreGroup: i,
+            genreName: config.genre
+          }))
+          
+          currentPlaylistQueue.value.push(...selectedTracks)
+          console.log(`✅ ${config.genre}: 已添加 ${selectedTracks.length} 首歌曲`)
+        }
+      } catch (error) {
+        console.error(`❌ 獲取 ${config.genre} 歌曲失敗:`, error)
+      }
+    }
+    
+    if (currentPlaylistQueue.value.length > 0) {
+      await playTrack(currentPlaylistQueue.value[0])
+      updatePlaylistStatus()
+    } else {
+      alert('無法建立播放隊列，請重試')
+      customPlaylistActive.value = false
+    }
+    
+  } catch (error) {
+    console.error('❌ 建立播放隊列失敗:', error)
+    alert('建立播放隊列失敗: ' + error.message)
+    customPlaylistActive.value = false
+  } finally {
+    loading.value = false
+  }
+}
+
+// 更新播放狀態顯示
+const updatePlaylistStatus = () => {
+  if (!customPlaylistActive.value || currentPlaylistQueue.value.length === 0) {
+    currentPlaylistStatus.value = ''
+    return
+  }
+  
+  const currentTrackInQueue = currentPlaylistQueue.value[currentPlaylistIndex.value]
+  if (currentTrackInQueue) {
+    const genreGroup = currentTrackInQueue.genreGroup + 1
+    const trackInGenre = currentTrackInQueue.trackIndexInGroup
+    const totalInGenre = currentTrackInQueue.totalInGroup
+    const totalProgress = `${currentPlaylistIndex.value + 1}/${currentPlaylistQueue.value.length}`
+    
+    currentPlaylistStatus.value = `第${genreGroup}組 ${currentTrackInQueue.genreName} (${trackInGenre}/${totalInGenre}) | 總進度: ${totalProgress} | ${currentTrackInQueue.name}`
+  }
+}
+
+// 自動播放下一首（自定義隊列）
+const playNextInCustomPlaylist = async () => {
+  if (!customPlaylistActive.value || currentPlaylistQueue.value.length === 0) {
+    return false
+  }
+  
+  currentPlaylistIndex.value++
+  
+  if (currentPlaylistIndex.value >= currentPlaylistQueue.value.length) {
+    console.log('🎵 自定義播放隊列播放完畢')
+    customPlaylistActive.value = false
+    currentPlaylistStatus.value = '播放隊列已完成'
+    setTimeout(() => {
+      currentPlaylistStatus.value = ''
+    }, 3000)
+    return false
+  }
+  
+  const nextTrack = currentPlaylistQueue.value[currentPlaylistIndex.value]
+  await playTrack(nextTrack)
+  updatePlaylistStatus()
+  return true
+}
+
+// 點擊外部關閉下拉選單
+const closeAllDropdowns = () => {
+  genreDropdownOpen.value = [false, false, false]
+  numberDropdownOpen.value = [false, false, false]
+}
+
 // 收藏功能方法
 const isFavorite = (trackId) => {
   return favoriteTrackIds.value.has(trackId)
@@ -424,21 +659,17 @@ const isFavorite = (trackId) => {
 
 const toggleFavorite = (track) => {
   if (favoriteTrackIds.value.has(track.id)) {
-    // 移除收藏
     favoriteTrackIds.value.delete(track.id)
     favoriteTracks.value = favoriteTracks.value.filter(t => t.id !== track.id)
   } else {
-    // 添加收藏
     favoriteTrackIds.value.add(track.id)
     favoriteTracks.value.push(track)
   }
   
-  // 如果當前在收藏頁面，更新顯示的歌曲
   if (currentMode.value === 'favorites') {
     displayedTracks.value = [...favoriteTracks.value]
   }
   
-  // 保存到本地存儲
   saveFavoritesToStorage()
 }
 
@@ -509,13 +740,11 @@ const handleSeek = (event) => {
   const progressPercent = clickX / rect.width
   const positionMs = Math.floor(progressPercent * duration.value * 1000)
   
-  // 調用 Spotify 的 seek 函數
   seek(event)
 }
 
 // 按曲風搜尋
 const searchByGenre = async (genre) => {
-  // 設置當前選中的曲風 (只有一個會是桃紅色)
   selectedGenre.value = genre
   
   loading.value = true
@@ -536,7 +765,6 @@ const setCurrentMode = async (mode) => {
   currentMode.value = mode
   
   if (mode === 'favorites') {
-    // 顯示收藏的歌曲
     displayedTracks.value = [...favoriteTracks.value]
     return
   }
@@ -582,50 +810,39 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-// 音頻均衡器動態效果 - 改進版（16條版本）
-const audioFrequencyData = ref(Array(16).fill(0.2)) // 👈 改為16個數據點
-const bassFrequencies = [0, 1, 2, 3, 4] // 低頻（5個）
-const midFrequencies = [5, 6, 7, 8, 9, 10] // 中頻（6個）  
-const highFrequencies = [11, 12, 13, 14, 15] // 高頻（5個）
+// 音頻均衡器動態效果
+const audioFrequencyData = ref(Array(16).fill(0.2))
+const bassFrequencies = [0, 1, 2, 3, 4]
+const midFrequencies = [5, 6, 7, 8, 9, 10]
+const highFrequencies = [11, 12, 13, 14, 15]
 
-// 模擬音頻頻譜分析
 const simulateAudioSpectrum = () => {
   if (!isPlaying.value) return
   
-  // 基於當前時間創建節拍感
   const currentTimeMs = Date.now()
-  const beatPeriod = 600 // 節拍週期 (毫秒)
+  const beatPeriod = 600
   const beatPhase = (currentTimeMs % beatPeriod) / beatPeriod
-  
-  // 創建節拍強度 (模擬鼓點)
   const beatIntensity = Math.max(0, Math.sin(beatPhase * Math.PI * 2) * 1.2 + 0.3)
   
-  // 為不同頻率範圍生成不同的模式
   audioFrequencyData.value = audioFrequencyData.value.map((currentValue, index) => {
     let newValue = currentValue
     
     if (bassFrequencies.includes(index)) {
-      // 低頻：較強的節拍感，變化較慢
       const bassRandom = Math.random() * 0.5 + 0.3
       const bassPattern = beatIntensity * (0.7 + Math.sin(currentTimeMs * 0.003 + index) * 0.3)
       newValue = bassRandom * bassPattern
-      
     } else if (midFrequencies.includes(index)) {
-      // 中頻：中等變化，有旋律感
       const midRandom = Math.random() * 0.6 + 0.2
       const midPattern = Math.sin(currentTimeMs * 0.005 + index * 0.5) * 0.3 + 0.5
       const rhythmBoost = Math.sin(beatPhase * Math.PI * 4) * 0.2
       newValue = midRandom * midPattern + rhythmBoost
-      
     } else if (highFrequencies.includes(index)) {
-      // 高頻：快速變化，較尖銳
       const highRandom = Math.random() * 0.8 + 0.15
       const highPattern = Math.sin(currentTimeMs * 0.008 + index * 1.2) * 0.4 + 0.3
       const sparkle = Math.random() > 0.7 ? Math.random() * 0.4 : 0
       newValue = highRandom * highPattern + sparkle
     }
     
-    // 平滑過渡，避免突兀的跳躍
     const smoothing = 0.7
     return currentValue * smoothing + newValue * (1 - smoothing)
   })
@@ -637,11 +854,10 @@ const updateEqualizerBars = () => {
   const bars = document.querySelectorAll('.equalizer-bar')
   bars.forEach((bar, index) => {
     const intensity = audioFrequencyData.value[index]
-    const height = Math.max(10, Math.min(100, intensity * 120)) // 限制在 15% 到 95% 之間
+    const height = Math.max(10, Math.min(100, intensity * 120))
     
     bar.style.height = `${height}%`
     
-    // 根據強度調整發光效果
     if (intensity > 0.7) {
       const glowIntensity = (intensity - 0.7) / 0.3
       bar.style.boxShadow = `
@@ -655,26 +871,20 @@ const updateEqualizerBars = () => {
       bar.style.boxShadow = 'none'
     }
     
-    // 根據頻率範圍調整顏色強度
     if (bassFrequencies.includes(index)) {
-      // 低頻偏向藍綠色
       bar.style.filter = `hue-rotate(${intensity * 30}deg) saturate(${1 + intensity * 0.5})`
     } else if (highFrequencies.includes(index)) {
-      // 高頻偏向紫紅色
       bar.style.filter = `hue-rotate(${-intensity * 20}deg) saturate(${1 + intensity * 0.8})`
     } else {
-      // 中頻保持原色
       bar.style.filter = `saturate(${1 + intensity * 0.6})`
     }
   })
 }
 
-// 改進的動畫控制
 let equalizerInterval = null
 const startEqualizerAnimation = () => {
   if (equalizerInterval) clearInterval(equalizerInterval)
-  // 使用更短的間隔來獲得更流暢的動畫
-  equalizerInterval = setInterval(simulateAudioSpectrum, 80) // 每80ms更新一次，約12.5 FPS
+  equalizerInterval = setInterval(simulateAudioSpectrum, 80)
 }
 
 const stopEqualizerAnimation = () => {
@@ -683,7 +893,6 @@ const stopEqualizerAnimation = () => {
     equalizerInterval = null
   }
   
-  // 平滑地降低到靜止狀態
   const fadeOut = () => {
     audioFrequencyData.value = audioFrequencyData.value.map(value => value * 0.9)
     updateEqualizerBars()
@@ -691,7 +900,6 @@ const stopEqualizerAnimation = () => {
     if (Math.max(...audioFrequencyData.value) > 0.05) {
       setTimeout(fadeOut, 50)
     } else {
-      // 完全停止時重置
       audioFrequencyData.value.fill(0.15)
       const bars = document.querySelectorAll('.equalizer-bar')
       bars.forEach(bar => {
@@ -709,7 +917,7 @@ const progressPercentage = computed(() => {
   return duration.value ? (currentTime.value / duration.value) * 100 : 0
 })
 
-// 監聽播放狀態變化，控制均衡器動畫
+// 監聽播放狀態變化
 watch(isPlaying, (playing) => {
   if (playing) {
     startEqualizerAnimation()
@@ -717,6 +925,24 @@ watch(isPlaying, (playing) => {
     stopEqualizerAnimation()
   }
 }, { immediate: true })
+
+// 強制顯示均衡器（即使沒有播放歌曲也顯示）
+watch(() => isSpotifyConnected.value, (connected) => {
+  if (connected) {
+    // 初始化均衡器顯示
+    setTimeout(() => {
+      startEqualizerAnimation()
+    }, 1000)
+  }
+})
+
+// 監聽當前播放歌曲變化 - 移除舊的自動播放邏輯
+watch(currentTrack, async (newTrack, oldTrack) => {
+  // 這裡移除舊的自動播放邏輯，因為我們現在使用時間監控
+  if (customPlaylistActive.value && newTrack && newTrack.id) {
+    updatePlaylistStatus()
+  }
+})
 
 // 監聽 Spotify 連接狀態
 watch(isSpotifyConnected, async (connected) => {
@@ -727,12 +953,24 @@ watch(isSpotifyConnected, async (connected) => {
 
 // 初始化
 onMounted(async () => {
-  // 載入收藏
   loadFavoritesFromStorage()
+  
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.dropdown-wrapper')) {
+      closeAllDropdowns()
+    }
+  })
   
   if (isSpotifyConnected.value && currentMode.value !== 'favorites') {
     await setCurrentMode('trending')
   }
+  
+  // 確保均衡器初始化
+  setTimeout(() => {
+    if (isSpotifyConnected.value) {
+      startEqualizerAnimation()
+    }
+  }, 500)
 })
 
 // 清理資源
@@ -740,6 +978,11 @@ onUnmounted(() => {
   if (equalizerInterval) {
     clearInterval(equalizerInterval)
   }
+  
+  // 清理播放隊列監控
+  stopPlaylistMonitoring()
+  
+  document.removeEventListener('click', closeAllDropdowns)
 })
 </script>
 
@@ -749,7 +992,7 @@ onUnmounted(() => {
 }
 
 .main-content {
-  background: linear-gradient(90deg, #002879 0%, #e5e7eb 100%);
+  background: linear-gradient(90deg, #191f30 0%, #e5e7eb 100%);
 }
 
 .progress-bar {
@@ -757,19 +1000,6 @@ onUnmounted(() => {
   transition: width 0.3s ease;
   position: relative;
   z-index: 1;
-}
-
-/* 進度條容器 */
-.progress-container {
-  background-color: #4a5568;
-  border-radius: 9999px;
-  height: 8px;
-  position: relative;
-  cursor: pointer;
-}
-
-.progress-container:hover .progress-bar {
-  background: linear-gradient(90deg, #1ed760 0%, #21e065 100%);
 }
 
 .music-card {
@@ -805,7 +1035,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 220px;        /* 👈 加寬到120px */
+  width: 220px;
   height: 50px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.1);
@@ -823,30 +1053,27 @@ onUnmounted(() => {
 }
 
 .equalizer-bar {
-  width: 10px;          /* 👈 從4px加粗到6px */
+  width: 10px;
   min-height: 4px;
   background: linear-gradient(
     to top,
-    #00ffff 0%,    /* 青藍色底部 */
-    #0080ff 25%,   /* 藍色 */
-    #8000ff 50%,   /* 紫色 */
-    #ff00ff 75%,   /* 粉紅色 */
-    #ff0080 100%   /* 桃紅色頂部 */
+    #00ffff 0%,
+    #0080ff 25%,
+    #8000ff 50%,
+    #ff00ff 75%,
+    #ff0080 100%
   );
-  border-radius: 3px;  /* 👈 對應調整圓角 */
+  border-radius: 3px;
   transition: height 0.08s ease-out, box-shadow 0.1s ease, filter 0.1s ease;
   animation: none;
   position: relative;
 }
 
-
-/* 為每個條設置基礎樣式差異 */
 .equalizer-bar:nth-child(1),
 .equalizer-bar:nth-child(2),
 .equalizer-bar:nth-child(3),
 .equalizer-bar:nth-child(4),
 .equalizer-bar:nth-child(5) {
-  /* 低頻條 - 偏藍綠色調 */
   background: linear-gradient(
     to top,
     #00ffff 0%,
@@ -862,7 +1089,6 @@ onUnmounted(() => {
 .equalizer-bar:nth-child(9),
 .equalizer-bar:nth-child(10),
 .equalizer-bar:nth-child(11) {
-  /* 中頻條 - 藍紫色調 */
   background: linear-gradient(
     to top,
     #0080ff 0%,
@@ -878,7 +1104,6 @@ onUnmounted(() => {
 .equalizer-bar:nth-child(14),
 .equalizer-bar:nth-child(15),
 .equalizer-bar:nth-child(16) {
-  /* 高頻條 - 紫紅色調 */
   background: linear-gradient(
     to top,
     #8000ff 0%,
@@ -888,33 +1113,142 @@ onUnmounted(() => {
     #ff4080 100%
   );
 }
+
 .play-controls-container {
   display: flex;
   align-items: center;
-  gap: 15px; /* 設置按鈕之間的間距為 30px */
+  gap: 15px;
 }
 
-/* 新增：統一的控制按鈕樣式 */
 .control-button {
   border-radius: 50%;
-  width: 48px;      /* 3rem = 48px */
-  height: 48px;     /* 3rem = 48px */
+  width: 48px;
+  height: 48px;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: white;
-  color: #1f2937;   /* gray-800 */
+  color: #1f2937;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .control-button:hover {
-  background-color: #e5e7eb; /* gray-200 */
+  background-color: #e5e7eb;
 }
 
-/* 音量滑桿樣式 */
+/* 簡單的播放隊列控制區樣式 */
+.playlist-control-panel {
+  background-color: #20283d;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+}
+
+.playlist-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.dropdown-wrapper {
+  position: relative;
+}
+
+.genre-btn-simple {
+  background-color: #1d4ed8;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  min-width: 100px;
+}
+
+.genre-btn-simple:hover {
+  background-color: #2563eb;
+}
+
+.number-btn-simple {
+  background-color: #d97706;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  min-width: 60px;
+}
+
+.number-btn-simple:hover {
+  background-color: #f59e0b;
+}
+
+.play-btn-simple {
+  background-color: #f59e0b;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.play-btn-simple:hover {
+  background-color: #10b981;
+}
+
+.dropdown-simple {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 120px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dropdown-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  color: #333;
+  border-bottom: 1px solid #eee;
+}
+
+.dropdown-item:hover {
+  background-color: #f3f4f6;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.plus-sign {
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.playlist-status {
+  text-align: center;
+  color: white;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
 .volume-slider {
   background: #4a5568;
   outline: none;
@@ -956,7 +1290,6 @@ onUnmounted(() => {
   50% { opacity: 0.5; }
 }
 
-/* 曲風按鈕特殊樣式 */
 .genre-btn {
   font-weight: 600;
   text-transform: uppercase;
@@ -984,7 +1317,6 @@ onUnmounted(() => {
   100% { transform: translateY(0) scale(1); }
 }
 
-/* 空心愛心效果 */
 .heart-outline {
   color: #a2a3a3 !important;
   -webkit-text-stroke: 0 #758094;
@@ -996,7 +1328,6 @@ onUnmounted(() => {
   text-stroke: 1.5px #079125;
 }
 
-/* 實心愛心效果 */
 .heart-filled {
   color: #ec4899 !important;
   -webkit-text-stroke: 0;
@@ -1004,7 +1335,6 @@ onUnmounted(() => {
   filter: drop-shadow(0 0 4px rgba(236, 72, 153, 0.3));
 }
 
-/* 響應式設計 */
 @media (max-width: 1280px) {
   .grid-cols-6 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1030,7 +1360,6 @@ onUnmounted(() => {
     width: 12rem; 
   }
   
-  /* 在小螢幕上減少按鈕間距 */
   .play-controls-container {
     gap: 20px;
   }
