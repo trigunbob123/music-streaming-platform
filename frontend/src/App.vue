@@ -93,19 +93,36 @@
           </div>
 
           <!-- 右側：播放控制和音量 -->
-          <div class="flex items-center space-x-10 flex-shrink-0">
+          <div class="flex items-center space-x-4 flex-shrink-0">
+            <!-- 音頻均衡器視覺效果 - 移回播放按鈕左邊 -->
+            <div class="audio-visualizer" v-if="currentTrack.name">
+              <div class="equalizer-bars">
+                <div 
+                  v-for="i in 16" 
+                  :key="i" 
+                  class="equalizer-bar" 
+                  :class="{ 'playing': isPlaying }"
+                  :style="{ 
+                    animationDelay: `${(i - 1) * 0.1}s`,
+                    height: isPlaying ? `${Math.random() * 60 + 20}%` : '20%'
+                  }"
+                ></div>
+              </div>
+            </div>
+            
             <!-- 播放控制按鈕 -->
-            <div class="flex items-center">
-  <button @click="handlePreviousTrack" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200 mx-16">
-    <font-awesome-icon icon="step-backward" class="text-lg" />
-  </button>
-  <button @click="handleTogglePlay" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200 mx-14">
-    <font-awesome-icon :icon="isPlaying ? 'pause' : 'play'" class="text-lg" />
-  </button>
-  <button @click="handleNextTrack" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200 mx-14">
-    <font-awesome-icon icon="step-forward" class="text-lg" />
-  </button>
-</div>
+            <div class="play-controls-container">
+              <button @click="handlePreviousTrack" class="control-button">
+                <font-awesome-icon icon="step-backward" class="text-lg" />
+              </button>
+              <button @click="handleTogglePlay" class="control-button">
+                <font-awesome-icon :icon="isPlaying ? 'pause' : 'play'" class="text-lg" />
+              </button>
+              <button @click="handleNextTrack" class="control-button">
+                <font-awesome-icon icon="step-forward" class="text-lg" />
+              </button>
+            </div>
+            
             <!-- 進度條區域 -->
             <div class="flex items-center space-x-2" style="min-width: 300px;">
               <span class="text-xs text-gray-300 w-12 text-right">{{ formatTime(currentTime) }}</span>
@@ -283,7 +300,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useSpotify } from './composables/useSpotify'
 
 // Spotify 組合式函數
@@ -397,7 +414,7 @@ const spotifyConfigured = computed(() => {
 // Spotify 曲風
 const spotifyGenres = ref([
   'pop', 'rock', 'hip-hop', 'electronic', 'jazz', 
-  'classical', 'country', 'latin', 'r-n-b', 'folk'
+  'classical', 'country', 'latin', 'r&b', 'folk'
 ])
 
 // 收藏功能方法
@@ -565,10 +582,141 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+// 音頻均衡器動態效果 - 改進版（16條版本）
+const audioFrequencyData = ref(Array(16).fill(0.2)) // 👈 改為16個數據點
+const bassFrequencies = [0, 1, 2, 3, 4] // 低頻（5個）
+const midFrequencies = [5, 6, 7, 8, 9, 10] // 中頻（6個）  
+const highFrequencies = [11, 12, 13, 14, 15] // 高頻（5個）
+
+// 模擬音頻頻譜分析
+const simulateAudioSpectrum = () => {
+  if (!isPlaying.value) return
+  
+  // 基於當前時間創建節拍感
+  const currentTimeMs = Date.now()
+  const beatPeriod = 600 // 節拍週期 (毫秒)
+  const beatPhase = (currentTimeMs % beatPeriod) / beatPeriod
+  
+  // 創建節拍強度 (模擬鼓點)
+  const beatIntensity = Math.max(0, Math.sin(beatPhase * Math.PI * 2) * 1.2 + 0.3)
+  
+  // 為不同頻率範圍生成不同的模式
+  audioFrequencyData.value = audioFrequencyData.value.map((currentValue, index) => {
+    let newValue = currentValue
+    
+    if (bassFrequencies.includes(index)) {
+      // 低頻：較強的節拍感，變化較慢
+      const bassRandom = Math.random() * 0.5 + 0.3
+      const bassPattern = beatIntensity * (0.7 + Math.sin(currentTimeMs * 0.003 + index) * 0.3)
+      newValue = bassRandom * bassPattern
+      
+    } else if (midFrequencies.includes(index)) {
+      // 中頻：中等變化，有旋律感
+      const midRandom = Math.random() * 0.6 + 0.2
+      const midPattern = Math.sin(currentTimeMs * 0.005 + index * 0.5) * 0.3 + 0.5
+      const rhythmBoost = Math.sin(beatPhase * Math.PI * 4) * 0.2
+      newValue = midRandom * midPattern + rhythmBoost
+      
+    } else if (highFrequencies.includes(index)) {
+      // 高頻：快速變化，較尖銳
+      const highRandom = Math.random() * 0.8 + 0.15
+      const highPattern = Math.sin(currentTimeMs * 0.008 + index * 1.2) * 0.4 + 0.3
+      const sparkle = Math.random() > 0.7 ? Math.random() * 0.4 : 0
+      newValue = highRandom * highPattern + sparkle
+    }
+    
+    // 平滑過渡，避免突兀的跳躍
+    const smoothing = 0.7
+    return currentValue * smoothing + newValue * (1 - smoothing)
+  })
+  
+  updateEqualizerBars()
+}
+
+const updateEqualizerBars = () => {
+  const bars = document.querySelectorAll('.equalizer-bar')
+  bars.forEach((bar, index) => {
+    const intensity = audioFrequencyData.value[index]
+    const height = Math.max(10, Math.min(100, intensity * 120)) // 限制在 15% 到 95% 之間
+    
+    bar.style.height = `${height}%`
+    
+    // 根據強度調整發光效果
+    if (intensity > 0.7) {
+      const glowIntensity = (intensity - 0.7) / 0.3
+      bar.style.boxShadow = `
+        0 0 ${glowIntensity * 8}px rgba(255, 0, 255, ${glowIntensity * 0.6}),
+        0 0 ${glowIntensity * 15}px rgba(0, 255, 255, ${glowIntensity * 0.3})
+      `
+    } else if (intensity > 0.5) {
+      const midGlow = (intensity - 0.5) / 0.2
+      bar.style.boxShadow = `0 0 ${midGlow * 4}px rgba(128, 0, 255, ${midGlow * 0.4})`
+    } else {
+      bar.style.boxShadow = 'none'
+    }
+    
+    // 根據頻率範圍調整顏色強度
+    if (bassFrequencies.includes(index)) {
+      // 低頻偏向藍綠色
+      bar.style.filter = `hue-rotate(${intensity * 30}deg) saturate(${1 + intensity * 0.5})`
+    } else if (highFrequencies.includes(index)) {
+      // 高頻偏向紫紅色
+      bar.style.filter = `hue-rotate(${-intensity * 20}deg) saturate(${1 + intensity * 0.8})`
+    } else {
+      // 中頻保持原色
+      bar.style.filter = `saturate(${1 + intensity * 0.6})`
+    }
+  })
+}
+
+// 改進的動畫控制
+let equalizerInterval = null
+const startEqualizerAnimation = () => {
+  if (equalizerInterval) clearInterval(equalizerInterval)
+  // 使用更短的間隔來獲得更流暢的動畫
+  equalizerInterval = setInterval(simulateAudioSpectrum, 80) // 每80ms更新一次，約12.5 FPS
+}
+
+const stopEqualizerAnimation = () => {
+  if (equalizerInterval) {
+    clearInterval(equalizerInterval)
+    equalizerInterval = null
+  }
+  
+  // 平滑地降低到靜止狀態
+  const fadeOut = () => {
+    audioFrequencyData.value = audioFrequencyData.value.map(value => value * 0.9)
+    updateEqualizerBars()
+    
+    if (Math.max(...audioFrequencyData.value) > 0.05) {
+      setTimeout(fadeOut, 50)
+    } else {
+      // 完全停止時重置
+      audioFrequencyData.value.fill(0.15)
+      const bars = document.querySelectorAll('.equalizer-bar')
+      bars.forEach(bar => {
+        bar.style.height = '15%'
+        bar.style.boxShadow = 'none'
+        bar.style.filter = 'none'
+      })
+    }
+  }
+  fadeOut()
+}
+
 // 計算屬性
 const progressPercentage = computed(() => {
   return duration.value ? (currentTime.value / duration.value) * 100 : 0
 })
+
+// 監聽播放狀態變化，控制均衡器動畫
+watch(isPlaying, (playing) => {
+  if (playing) {
+    startEqualizerAnimation()
+  } else {
+    stopEqualizerAnimation()
+  }
+}, { immediate: true })
 
 // 監聽 Spotify 連接狀態
 watch(isSpotifyConnected, async (connected) => {
@@ -584,6 +732,13 @@ onMounted(async () => {
   
   if (isSpotifyConnected.value && currentMode.value !== 'favorites') {
     await setCurrentMode('trending')
+  }
+})
+
+// 清理資源
+onUnmounted(() => {
+  if (equalizerInterval) {
+    clearInterval(equalizerInterval)
   }
 })
 </script>
@@ -643,6 +798,120 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 音頻均衡器視覺效果 */
+.audio-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 220px;        /* 👈 加寬到120px */
+  height: 50px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.equalizer-bars {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  gap: 2px;
+}
+
+.equalizer-bar {
+  width: 10px;          /* 👈 從4px加粗到6px */
+  min-height: 4px;
+  background: linear-gradient(
+    to top,
+    #00ffff 0%,    /* 青藍色底部 */
+    #0080ff 25%,   /* 藍色 */
+    #8000ff 50%,   /* 紫色 */
+    #ff00ff 75%,   /* 粉紅色 */
+    #ff0080 100%   /* 桃紅色頂部 */
+  );
+  border-radius: 3px;  /* 👈 對應調整圓角 */
+  transition: height 0.08s ease-out, box-shadow 0.1s ease, filter 0.1s ease;
+  animation: none;
+  position: relative;
+}
+
+
+/* 為每個條設置基礎樣式差異 */
+.equalizer-bar:nth-child(1),
+.equalizer-bar:nth-child(2),
+.equalizer-bar:nth-child(3),
+.equalizer-bar:nth-child(4),
+.equalizer-bar:nth-child(5) {
+  /* 低頻條 - 偏藍綠色調 */
+  background: linear-gradient(
+    to top,
+    #00ffff 0%,
+    #00c0ff 30%,
+    #0080ff 60%,
+    #4080ff 100%
+  );
+}
+
+.equalizer-bar:nth-child(6),
+.equalizer-bar:nth-child(7),
+.equalizer-bar:nth-child(8),
+.equalizer-bar:nth-child(9),
+.equalizer-bar:nth-child(10),
+.equalizer-bar:nth-child(11) {
+  /* 中頻條 - 藍紫色調 */
+  background: linear-gradient(
+    to top,
+    #0080ff 0%,
+    #4040ff 25%,
+    #8000ff 50%,
+    #c000ff 75%,
+    #ff00c0 100%
+  );
+}
+
+.equalizer-bar:nth-child(12),
+.equalizer-bar:nth-child(13),
+.equalizer-bar:nth-child(14),
+.equalizer-bar:nth-child(15),
+.equalizer-bar:nth-child(16) {
+  /* 高頻條 - 紫紅色調 */
+  background: linear-gradient(
+    to top,
+    #8000ff 0%,
+    #c000ff 25%,
+    #ff00ff 50%,
+    #ff0080 75%,
+    #ff4080 100%
+  );
+}
+.play-controls-container {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* 設置按鈕之間的間距為 30px */
+}
+
+/* 新增：統一的控制按鈕樣式 */
+.control-button {
+  border-radius: 50%;
+  width: 48px;      /* 3rem = 48px */
+  height: 48px;     /* 3rem = 48px */
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  color: #1f2937;   /* gray-800 */
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.control-button:hover {
+  background-color: #e5e7eb; /* gray-200 */
 }
 
 /* 音量滑桿樣式 */
@@ -759,6 +1028,16 @@ onMounted(async () => {
   
   .w-64 { 
     width: 12rem; 
+  }
+  
+  /* 在小螢幕上減少按鈕間距 */
+  .play-controls-container {
+    gap: 20px;
+  }
+  
+  .control-button {
+    width: 40px;
+    height: 40px;
   }
 }
 </style>
