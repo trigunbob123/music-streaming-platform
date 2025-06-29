@@ -4,10 +4,10 @@
     <div class="w-64 sidebar text-white p-4">
       <div class="flex items-center justify-between mb-8">
         <img 
-  src="@/assets/images/12.png" 
-  alt="DDM360" 
-  class="h-auto w-20 "
-/>
+          src="@/assets/images/12.png" 
+          alt="DDM360" 
+          class="h-auto w-20 "
+        />
         <div class="flex space-x-2">
           <button v-if="!isSpotifyConnected && spotifyConfigured" @click="connectSpotify" 
                   class="text-green-400 hover:text-green-300 text-sm">
@@ -65,84 +65,85 @@
 
     <!-- 主要內容區域 -->
     <div class="flex-1 main-content">
-      <!-- 頂部播放器 -->
+      <!-- 頂部播放器 - 新布局 -->
       <div class="bg-gray-800 p-6 text-white">
-        <div class="flex items-center justify-center space-x-4">
-          <button @click="previousTrack" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200">
-            <font-awesome-icon icon="step-backward" class="text-xl" />
-          </button>
-          <button @click="togglePlay" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200">
-            <font-awesome-icon :icon="isPlaying ? 'pause' : 'play'" class="text-xl" />
-          </button>
-          <button @click="nextTrack" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200">
-            <font-awesome-icon icon="step-forward" class="text-xl" />
-          </button>
-          
-          <div class="flex items-center space-x-3 min-w-96">
-            <span class="text-sm">{{ formatTime(currentTime) }}</span>
-            <div class="flex-1 bg-gray-600 rounded-full h-2 cursor-pointer" @click="seek">
-              <div class="progress-bar h-2 rounded-full" :style="{ width: progressPercentage + '%' }"></div>
+        <div class="flex items-center justify-between">
+          <!-- 左側：當前播放歌曲 -->
+          <div class="flex items-center min-w-0 flex-1" v-if="currentTrack.name">
+            <!-- 放大的封面 -->
+            <div class="w-20 h-20 rounded-lg mr-4 overflow-hidden flex-shrink-0">
+              <img v-if="currentTrack.album?.images?.[0]?.url" 
+                   :src="currentTrack.album.images[0].url" 
+                   :alt="currentTrack.name" 
+                   class="w-full h-full object-cover" />
+              <div v-else class="w-full h-full bg-gradient-to-br from-green-500 to-purple-600 flex items-center justify-center">
+                <font-awesome-icon icon="music" class="text-white text-2xl" />
+              </div>
             </div>
-            <span class="text-sm">{{ formatTime(duration) }}</span>
-          </div>
-          
-          <button @click="toggleShuffle" class="btn btn-circle bg-transparent text-white hover:bg-gray-700"
-                  :class="{ 'text-green-400': isShuffled }">
-            <font-awesome-icon icon="random" class="text-xl" />
-          </button>
-          <button @click="toggleRepeat" class="btn btn-circle bg-transparent text-white hover:bg-gray-700"
-                  :class="{ 'text-green-400': repeatMode !== 'off' }">
-            <font-awesome-icon :icon="repeatMode === 'track' ? 'redo' : 'repeat'" class="text-xl" />
-          </button>
-          
-          <!-- 音量控制 -->
-          <div class="flex items-center space-x-2">
-            <button class="btn btn-circle bg-transparent text-white hover:bg-gray-700">
-              <font-awesome-icon :icon="getVolumeIcon()" class="text-xl" />
-            </button>
-            <input 
-              type="range" 
-              min="0" 
-              max="100" 
-              v-model="volume" 
-              @input="handleVolumeChange"
-              class="volume-slider w-20 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-            />
-            <span class="text-xs text-gray-300 w-8">{{ volume }}%</span>
-          </div>
-        </div>
-
-        <!-- 當前播放歌曲 -->
-        <div class="flex items-center justify-center mt-4" v-if="currentTrack.name">
-          <div class="w-12 h-12 rounded-lg mr-3 overflow-hidden">
-            <img v-if="currentTrack.album?.images?.[0]?.url" 
-                 :src="currentTrack.album.images[0].url" 
-                 :alt="currentTrack.name" 
-                 class="w-full h-full object-cover" />
-            <div v-else class="w-full h-full bg-gradient-to-br from-green-500 to-purple-600 flex items-center justify-center">
-              <font-awesome-icon icon="music" class="text-white text-xl" />
+            <!-- 歌曲信息 -->
+            <div class="min-w-0 flex-1">
+              <p class="font-medium text-lg truncate" :title="currentTrack.name">{{ currentTrack.name }}</p>
+              <p class="text-sm text-gray-300 truncate" :title="currentTrack.artists?.map(a => a.name).join(', ')">
+                {{ currentTrack.artists?.map(a => a.name).join(', ') }}
+              </p>
+              <p class="text-xs text-green-400 truncate" v-if="currentTrack.album?.name" :title="currentTrack.album.name">
+                {{ currentTrack.album.name }}
+              </p>
             </div>
           </div>
-          <div class="text-left">
-            <p class="font-medium text-sm">{{ currentTrack.name }}</p>
-            <p class="text-xs text-gray-300">{{ currentTrack.artists?.map(a => a.name).join(', ') }}</p>
-          </div>
-        </div>
 
-        <!-- 連接狀態 -->
-        <div class="text-center mt-2">
-          <span v-if="!isSpotifyConnected && spotifyConfigured" class="text-xs px-3 py-1 rounded-full bg-red-100 text-red-800">
-            未連接 Spotify
-          </span>
-          <span v-else-if="!spotifyConfigured" class="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-800">
-            Spotify 未配置
-          </span>
-          <span v-else-if="isPlaying" class="text-xs px-3 py-1 rounded-full bg-green-100 text-green-800">
-            正在播放
-          </span>
-          <span v-else class="text-xs px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
-            已暫停
-          </span>
+          <!-- 右側：播放控制和音量 -->
+          <div class="flex items-center space-x-10 flex-shrink-0">
+            <!-- 播放控制按鈕 -->
+            <div class="flex items-center">
+  <button @click="handlePreviousTrack" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200 mx-16">
+    <font-awesome-icon icon="step-backward" class="text-lg" />
+  </button>
+  <button @click="handleTogglePlay" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200 mx-14">
+    <font-awesome-icon :icon="isPlaying ? 'pause' : 'play'" class="text-lg" />
+  </button>
+  <button @click="handleNextTrack" class="btn btn-circle bg-white text-gray-800 hover:bg-gray-200 mx-14">
+    <font-awesome-icon icon="step-forward" class="text-lg" />
+  </button>
+</div>
+            <!-- 進度條區域 -->
+            <div class="flex items-center space-x-2" style="min-width: 300px;">
+              <span class="text-xs text-gray-300 w-12 text-right">{{ formatTime(currentTime) }}</span>
+              <div class="flex-1 bg-gray-600 rounded-full h-2 cursor-pointer relative" @click="handleSeek">
+                <div class="progress-bar h-2 rounded-full absolute top-0 left-0" 
+                     :style="{ width: progressPercentage + '%' }"></div>
+              </div>
+              <span class="text-xs text-gray-300 w-6">{{ formatTime(duration) }}</span>
+            </div>
+
+            <!-- 播放模式控制 -->
+            <div class="flex items-center space-x-2">
+              <button @click="toggleShuffle" class="btn btn-circle bg-transparent text-white hover:bg-gray-700"
+                      :class="{ 'text-green-400': isShuffled }">
+                <font-awesome-icon icon="random" class="text-lg" />
+              </button>
+              <button @click="toggleRepeat" class="btn btn-circle bg-transparent text-white hover:bg-gray-700"
+                      :class="{ 'text-green-400': repeatMode !== 'off' }">
+                <font-awesome-icon :icon="repeatMode === 'track' ? 'redo' : 'repeat'" class="text-lg" />
+              </button>
+            </div>
+
+            <!-- 音量控制 -->
+            <div class="flex items-center space-x-2">
+              <button class="btn btn-circle bg-transparent text-white hover:bg-gray-700">
+                <font-awesome-icon :icon="getVolumeIcon()" class="text-lg" />
+              </button>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                v-model="volume" 
+                @input="handleVolumeChange"
+                class="volume-slider w-20 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+              />
+              <span class="text-xs text-gray-300 w-8">{{ volume }}%</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -196,13 +197,13 @@
                :class="{ 'ring-2 ring-green-500': currentTrack.id === track.id }">
             
             <!-- 愛心收藏按鈕 -->
-<button @click.stop="toggleFavorite(track)" 
-        class="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/90 hover:bg-white transition-all duration-300 hover:scale-110 shadow-sm">
-  <font-awesome-icon 
-    icon="heart"
-    class="text-sm transition-all duration-300"
-    :class="isFavorite(track.id) ? 'text-pink-500 heart-filled' : 'text-gray-400 hover:text-gray-600 heart-outline'" />
-</button>
+            <button @click.stop="toggleFavorite(track)" 
+                    class="absolute top-2 right-2 z-10 p-2 rounded-full bg-white/90 hover:bg-white transition-all duration-300 hover:scale-110 shadow-sm">
+              <font-awesome-icon 
+                :icon="isFavorite(track.id) ? ['fas', 'heart'] : ['far', 'heart']"
+                class="text-sm transition-all duration-300"
+                :class="isFavorite(track.id) ? 'text-pink-500 heart-filled' : 'text-gray-400 hover:text-gray-600 heart-outline'" />
+            </button>
             
             <!-- 封面 -->
             <div class="w-full h-24 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative"
@@ -343,6 +344,34 @@ const {
   getUserPlaylists
 } = spotifyComposable
 
+// 確保播放控制函數有效
+const handlePreviousTrack = () => {
+  console.log('點擊上一首按鈕')
+  if (previousTrack && typeof previousTrack === 'function') {
+    previousTrack()
+  } else {
+    console.warn('previousTrack 函數不可用')
+  }
+}
+
+const handleNextTrack = () => {
+  console.log('點擊下一首按鈕') 
+  if (nextTrack && typeof nextTrack === 'function') {
+    nextTrack()
+  } else {
+    console.warn('nextTrack 函數不可用')
+  }
+}
+
+const handleTogglePlay = () => {
+  console.log('點擊播放/暫停按鈕')
+  if (togglePlay && typeof togglePlay === 'function') {
+    togglePlay()
+  } else {
+    console.warn('togglePlay 函數不可用')
+  }
+}
+
 // 基本數據
 const currentMode = ref('trending')
 const loading = ref(false)
@@ -373,26 +402,19 @@ const spotifyGenres = ref([
 
 // 收藏功能方法
 const isFavorite = (trackId) => {
-  console.log('檢查收藏狀態:', trackId, favoriteTrackIds.value.has(trackId))
   return favoriteTrackIds.value.has(trackId)
 }
 
 const toggleFavorite = (track) => {
-  console.log('切換收藏:', track.name, track.id) // 調試信息
-  
   if (favoriteTrackIds.value.has(track.id)) {
     // 移除收藏
     favoriteTrackIds.value.delete(track.id)
     favoriteTracks.value = favoriteTracks.value.filter(t => t.id !== track.id)
-    console.log('移除收藏') // 調試信息
   } else {
     // 添加收藏
     favoriteTrackIds.value.add(track.id)
     favoriteTracks.value.push(track)
-    console.log('添加收藏') // 調試信息
   }
-  
-  console.log('當前收藏列表:', [...favoriteTrackIds.value]) // 調試信息
   
   // 如果當前在收藏頁面，更新顯示的歌曲
   if (currentMode.value === 'favorites') {
@@ -459,6 +481,19 @@ const searchTracks = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 進度條點擊處理
+const handleSeek = (event) => {
+  if (!duration.value || !seek || typeof seek !== 'function') return
+  
+  const rect = event.currentTarget.getBoundingClientRect()
+  const clickX = event.clientX - rect.left
+  const progressPercent = clickX / rect.width
+  const positionMs = Math.floor(progressPercent * duration.value * 1000)
+  
+  // 調用 Spotify 的 seek 函數
+  seek(event)
 }
 
 // 按曲風搜尋
@@ -565,6 +600,21 @@ onMounted(async () => {
 .progress-bar {
   background: linear-gradient(90deg, #1db954 0%, #1ed760 100%);
   transition: width 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+/* 進度條容器 */
+.progress-container {
+  background-color: #4a5568;
+  border-radius: 9999px;
+  height: 8px;
+  position: relative;
+  cursor: pointer;
+}
+
+.progress-container:hover .progress-bar {
+  background: linear-gradient(90deg, #1ed760 0%, #21e065 100%);
 }
 
 .music-card {
@@ -683,5 +733,32 @@ onMounted(async () => {
   -webkit-text-stroke: 0;
   text-stroke: 0;
   filter: drop-shadow(0 0 4px rgba(236, 72, 153, 0.3));
+}
+
+/* 響應式設計 */
+@media (max-width: 1280px) {
+  .grid-cols-6 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .grid-cols-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .grid-cols-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  
+  .w-64 { 
+    width: 12rem; 
+  }
 }
 </style>
