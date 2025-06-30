@@ -65,12 +65,12 @@
 
     <!-- 主要內容區域 -->
     <div class="flex-1 main-content">
-      <!-- 頂部播放器 - 新布局 -->
+      <!-- 頂部播放器 -->
       <div class="bg-gray-800 p-6 text-white">
         <div class="flex items-center justify-between">
           <!-- 左側：當前播放歌曲 -->
           <div class="flex items-center min-w-0 flex-1" v-if="currentTrack.name">
-            <!-- 放大的封面 -->
+            <!-- 封面 -->
             <div class="w-20 h-20 rounded-lg mr-4 overflow-hidden flex-shrink-0">
               <img v-if="currentTrack.album?.images?.[0]?.url" 
                    :src="currentTrack.album.images[0].url" 
@@ -94,7 +94,7 @@
 
           <!-- 右側：播放控制和音量 -->
           <div class="flex items-center space-x-4 flex-shrink-0">
-            <!-- 音頻均衡器視覺效果 - 總是顯示 -->
+            <!-- 音頻均衡器視覺效果 -->
             <div class="audio-visualizer">
               <div class="equalizer-bars">
                 <div 
@@ -169,13 +169,19 @@
         </div>
       </div>
 
-      <!-- 曲風按鈕 -->
+      <!-- 主要內容 -->
       <div class="p-6">
-        <!-- 新的播放隊列控制區 - 簡單版本 -->
+        <!-- 自定義播放隊列控制區 -->
         <div class="playlist-control-panel" v-if="isSpotifyConnected">
+          <div class="playlist-header">
+            <h3 class="text-white text-lg font-bold mb-4">🎵 自定義播放隊列</h3>
+            <p class="text-gray-300 text-sm mb-4">設定三組曲風和數量，系統將按順序播放</p>
+          </div>
+          
           <div class="playlist-controls">
             <!-- 第一組 -->
             <div class="control-group">
+              <span class="group-label">第1組</span>
               <div class="dropdown-wrapper">
                 <button class="genre-btn-simple" @click="toggleGenreDropdown(0)">
                   {{ playlistConfig[0].genre }} ▼
@@ -189,21 +195,22 @@
               </div>
               <div class="dropdown-wrapper">
                 <button class="number-btn-simple" @click="toggleNumberDropdown(0)">
-                  {{ playlistConfig[0].count }} ▼
+                  {{ playlistConfig[0].count }} 首 ▼
                 </button>
                 <div v-if="numberDropdownOpen[0]" class="dropdown-simple">
-                  <div v-for="num in [1,2,3,4,5]" :key="num" 
+                  <div v-for="num in [1,2,3,4,5,6,7,8,9,10]" :key="num" 
                        @click="selectNumber(0, num)" class="dropdown-item">
-                    {{ num }}
+                    {{ num }} 首
                   </div>
                 </div>
               </div>
             </div>
 
-            <span class="plus-sign">+</span>
+            <span class="plus-sign">→</span>
 
             <!-- 第二組 -->
             <div class="control-group">
+              <span class="group-label">第2組</span>
               <div class="dropdown-wrapper">
                 <button class="genre-btn-simple" @click="toggleGenreDropdown(1)">
                   {{ playlistConfig[1].genre }} ▼
@@ -217,21 +224,22 @@
               </div>
               <div class="dropdown-wrapper">
                 <button class="number-btn-simple" @click="toggleNumberDropdown(1)">
-                  {{ playlistConfig[1].count }} ▼
+                  {{ playlistConfig[1].count }} 首 ▼
                 </button>
                 <div v-if="numberDropdownOpen[1]" class="dropdown-simple">
-                  <div v-for="num in [1,2,3,4,5]" :key="num" 
+                  <div v-for="num in [1,2,3,4,5,6,7,8,9,10]" :key="num" 
                        @click="selectNumber(1, num)" class="dropdown-item">
-                    {{ num }}
+                    {{ num }} 首
                   </div>
                 </div>
               </div>
             </div>
 
-            <span class="plus-sign">+</span>
+            <span class="plus-sign">→</span>
 
             <!-- 第三組 -->
             <div class="control-group">
+              <span class="group-label">第3組</span>
               <div class="dropdown-wrapper">
                 <button class="genre-btn-simple" @click="toggleGenreDropdown(2)">
                   {{ playlistConfig[2].genre }} ▼
@@ -245,33 +253,59 @@
               </div>
               <div class="dropdown-wrapper">
                 <button class="number-btn-simple" @click="toggleNumberDropdown(2)">
-                  {{ playlistConfig[2].count }} ▼
+                  {{ playlistConfig[2].count }} 首 ▼
                 </button>
                 <div v-if="numberDropdownOpen[2]" class="dropdown-simple">
-                  <div v-for="num in [1,2,3,4,5]" :key="num" 
+                  <div v-for="num in [1,2,3,4,5,6,7,8,9,10]" :key="num" 
                        @click="selectNumber(2, num)" class="dropdown-item">
-                    {{ num }}
+                    {{ num }} 首
                   </div>
                 </div>
               </div>
             </div>
 
-            <button class="play-btn-simple" @click="startCustomPlaylist">
-              ▶ 播放
+            <!-- 播放按鈕 -->
+            <button class="play-btn-simple" @click="startCustomPlaylist" :disabled="loading">
+              <span v-if="loading">
+                <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                建立中...
+              </span>
+              <span v-else>
+                ▶ 開始播放
+              </span>
             </button>
           </div>
           
+          <!-- 播放狀態顯示 -->
           <div v-if="customPlaylistActive" class="playlist-status">
-            {{ currentPlaylistStatus }}
+            <div class="status-header">
+              <span class="status-badge">🎵 正在播放自定義隊列</span>
+              <button @click="stopCustomPlaylist" class="stop-btn">
+                ⏹ 停止
+              </button>
+            </div>
+            <div class="status-details">
+              {{ currentPlaylistStatus }}
+            </div>
+            <!-- 播放進度條 -->
+            <div class="playlist-progress">
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" 
+                     :style="{ width: playlistProgressPercent + '%' }"></div>
+              </div>
+              <span class="progress-text">
+                {{ (currentTrackIndex || 0) + 1 }} / {{ totalPlaylistTracks }} 首
+              </span>
+            </div>
           </div>
         </div>
 
-        <!-- 原有的曲風按鈕 - 確保顯示 -->
+        <!-- 曲風按鈕 -->
         <div v-if="isSpotifyConnected && currentMode !== 'favorites'">
           <div class="grid grid-cols-5 gap-4 mb-4">
             <button v-for="genre in spotifyGenres.slice(0, 5)" :key="genre" 
                     @click="searchByGenre(genre)"
-                    class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105 active:animate-bounce"
+                    class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105"
                     :class="selectedGenre === genre ? 'bg-pink-500' : 'bg-blue-800'">
               {{ genre.toUpperCase() }}
             </button>
@@ -279,7 +313,7 @@
           <div class="grid grid-cols-5 gap-4 mb-8">
             <button v-for="genre in spotifyGenres.slice(5, 10)" :key="genre" 
                     @click="searchByGenre(genre)"
-                    class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105 active:animate-bounce"
+                    class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105"
                     :class="selectedGenre === genre ? 'bg-pink-500' : 'bg-blue-800'">
               {{ genre.toUpperCase() }}
             </button>
@@ -318,7 +352,7 @@
             
             <!-- 封面 -->
             <div class="w-full h-24 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative"
-                 @click="playTrack(track)">
+                 @click="handleTrackClick(track)">
               <img v-if="track.album?.images?.[0]?.url" 
                    :src="track.album.images[0].url" 
                    :alt="track.name" 
@@ -337,7 +371,7 @@
             </div>
             
             <!-- 歌曲信息 -->
-            <div @click="playTrack(track)" class="cursor-pointer">
+            <div @click="handleTrackClick(track)" class="cursor-pointer">
               <h3 class="font-bold text-sm text-gray-800 truncate mb-1" :title="track.name">
                 {{ track.name }}
               </h3>
@@ -403,6 +437,7 @@ let spotifyComposable = null
 try {
   spotifyComposable = useSpotify()
 } catch (error) {
+  console.warn('useSpotify 初始化失敗:', error)
   // 創建空的替代對象
   spotifyComposable = {
     isSpotifyConnected: ref(false),
@@ -414,20 +449,26 @@ try {
     isShuffled: ref(false),
     repeatMode: ref('off'),
     spotifyDevices: ref([]),
-    connectSpotify: () => {},
+    currentPlaylist: ref([]),
+    currentTrackIndex: ref(0),
+    autoPlayNext: ref(true),
+    connectSpotify: () => Promise.resolve(),
     disconnectSpotify: () => {},
-    playTrack: () => {},
-    togglePlay: () => {},
-    previousTrack: () => {},
-    nextTrack: () => {},
-    seek: () => {},
-    setVolume: () => {},
-    toggleShuffle: () => {},
-    toggleRepeat: () => {},
+    playTrack: () => Promise.resolve(),
+    togglePlay: () => Promise.resolve(),
+    previousTrack: () => Promise.resolve(),
+    nextTrack: () => Promise.resolve(),
+    seek: () => Promise.resolve(),
+    setVolume: () => Promise.resolve(),
+    toggleShuffle: () => Promise.resolve(),
+    toggleRepeat: () => Promise.resolve(),
     searchTracks: () => Promise.resolve([]),
     getRecommendations: () => Promise.resolve([]),
     getUserPlaylists: () => Promise.resolve([]),
-    getDevices: () => Promise.resolve([])
+    getDevices: () => Promise.resolve([]),
+    setPlaylist: () => {},
+    clearPlaylist: () => {},
+    playNextInPlaylist: () => Promise.resolve()
   }
 }
 
@@ -440,6 +481,9 @@ const {
   volume,
   isShuffled,
   repeatMode,
+  currentPlaylist,
+  currentTrackIndex,
+  autoPlayNext,
   connectSpotify,
   disconnectSpotify,
   playTrack,
@@ -452,7 +496,10 @@ const {
   toggleRepeat,
   searchTracks: spotifySearch,
   getRecommendations,
-  getUserPlaylists
+  getUserPlaylists,
+  setPlaylist,
+  clearPlaylist,
+  playNextInPlaylist
 } = spotifyComposable
 
 // 基本數據
@@ -465,7 +512,7 @@ const displayedTracks = ref([])
 const favoriteTrackIds = ref(new Set())
 const favoriteTracks = ref([])
 
-// 修改：追蹤當前選中的曲風按鈕 (只能有一個)
+// 追蹤當前選中的曲風按鈕
 const selectedGenre = ref('')
 
 // 檢查 Spotify 是否已配置
@@ -483,14 +530,14 @@ const spotifyGenres = ref([
   'classical', 'country', 'latin', 'r&b', 'folk'
 ])
 
-// 新增：自定義播放隊列功能
-const availableGenres = ref(['Jazz', 'Country', 'Rock', 'Pop', 'Hip-Hop', 'Electronic', 'Classical', 'Latin', 'R&B', 'Folk'])
+// 自定義播放隊列功能
+const availableGenres = ref(['Pop', 'Rock', 'Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Country', 'Latin', 'R&B', 'Folk', 'Blues', 'Reggae', 'Funk', 'Soul', 'Indie'])
 
 // 播放隊列配置
 const playlistConfig = ref([
-  { genre: 'Jazz', count: 3 },
-  { genre: 'Country', count: 5 },
-  { genre: 'Rock', count: 1 }
+  { genre: 'Pop', count: 3 },
+  { genre: 'Rock', count: 2 },
+  { genre: 'Jazz', count: 1 }
 ])
 
 // 下拉選單狀態
@@ -499,14 +546,20 @@ const numberDropdownOpen = ref([false, false, false])
 
 // 自定義播放隊列狀態
 const customPlaylistActive = ref(false)
-const customPlaylistQueue = ref([]) // 完整的播放隊列
-const customPlaylistIndex = ref(0) // 當前播放位置
+const customPlaylistQueue = ref([])
+const customPlaylistIndex = ref(0)
 const currentPlaylistStatus = ref('')
 
-// 播放隊列監控
-let playlistMonitorInterval = null
-let lastPlayTime = ref(0)
-let lastTrackId = ref('')
+// 播放隊列進度
+const totalPlaylistTracks = computed(() => {
+  return playlistConfig.value.reduce((total, config) => total + config.count, 0)
+})
+
+const playlistProgressPercent = computed(() => {
+  if (!customPlaylistActive.value || totalPlaylistTracks.value === 0) return 0
+  const currentIndex = currentTrackIndex.value || 0
+  return ((currentIndex + 1) / customPlaylistQueue.value.length) * 100
+})
 
 // 下拉選單控制函數
 const toggleGenreDropdown = (index) => {
@@ -522,34 +575,56 @@ const toggleNumberDropdown = (index) => {
 const selectGenre = (index, genre) => {
   playlistConfig.value[index].genre = genre
   genreDropdownOpen.value[index] = false
+  console.log(`✅ 第${index + 1}組曲風設定為: ${genre}`)
 }
 
 const selectNumber = (index, number) => {
   playlistConfig.value[index].count = number
   numberDropdownOpen.value[index] = false
+  console.log(`✅ 第${index + 1}組數量設定為: ${number} 首`)
 }
 
-// 建立自定義播放隊列
+// 自定義播放隊列建立
 const startCustomPlaylist = async () => {
   try {
     loading.value = true
-    customPlaylistActive.value = true
-    customPlaylistQueue.value = []  // 清空隊列
+    customPlaylistActive.value = false
+    customPlaylistQueue.value = []
     customPlaylistIndex.value = 0
     
     console.log('🎵 開始建立自定義播放隊列...')
-    console.log('播放配置:', playlistConfig.value)
+    console.log('📋 播放配置:', playlistConfig.value)
     
     // 按順序建立播放隊列
     for (let groupIndex = 0; groupIndex < playlistConfig.value.length; groupIndex++) {
       const config = playlistConfig.value[groupIndex]
       console.log(`📀 第${groupIndex + 1}組：獲取 ${config.genre} 曲風的 ${config.count} 首歌曲...`)
       
-      const searchGenre = config.genre.toLowerCase().replace('-', ' ')
-      
       try {
-        const genreTracks = await spotifySearch(`genre:${searchGenre}`, 'track')
-        if (genreTracks && genreTracks.length > 0) {
+        // 使用更好的搜尋策略
+        const searchQueries = [
+          `genre:"${config.genre.toLowerCase()}"`,
+          `${config.genre.toLowerCase()} top tracks`,
+          `${config.genre.toLowerCase()} popular`
+        ]
+        
+        let genreTracks = []
+        
+        // 嘗試不同的搜尋查詢
+        for (const query of searchQueries) {
+          try {
+            const results = await spotifySearch(query, 'track')
+            if (results && results.length > 0) {
+              genreTracks = results
+              console.log(`✅ 使用查詢 "${query}" 找到 ${results.length} 首歌曲`)
+              break
+            }
+          } catch (searchError) {
+            console.warn(`⚠️ 查詢 "${query}" 失敗:`, searchError)
+          }
+        }
+        
+        if (genreTracks.length > 0) {
           // 隨機選擇歌曲但保持設定的數量
           const shuffledTracks = [...genreTracks].sort(() => Math.random() - 0.5)
           const selectedTracks = shuffledTracks.slice(0, config.count)
@@ -561,11 +636,13 @@ const startCustomPlaylist = async () => {
               genreGroup: groupIndex,
               genreName: config.genre,
               trackIndexInGroup: trackIndex,
-              totalInGroup: config.count
+              totalInGroup: config.count,
+              globalIndex: customPlaylistQueue.value.length
             })
           })
           
           console.log(`✅ 第${groupIndex + 1}組 ${config.genre}: 已添加 ${selectedTracks.length} 首歌曲`)
+          console.log(`🎵 歌曲列表:`, selectedTracks.map(t => `${t.name} - ${t.artists?.[0]?.name}`))
         } else {
           console.warn(`⚠️ 第${groupIndex + 1}組 ${config.genre}: 找不到歌曲`)
         }
@@ -574,16 +651,29 @@ const startCustomPlaylist = async () => {
       }
     }
     
-    console.log('🎵 播放隊列建立完成，總共', customPlaylistQueue.value.length, '首歌曲')
-    console.log('播放隊列:', customPlaylistQueue.value.map(t => `${t.genreName}-${t.name}`))
+    console.log('🎵 播放隊列建立完成')
+    console.log('📊 統計:', {
+      totalTracks: customPlaylistQueue.value.length,
+      targetTracks: totalPlaylistTracks.value,
+      queue: customPlaylistQueue.value.map(t => `${t.genreName}-${t.name}`)
+    })
     
     if (customPlaylistQueue.value.length > 0) {
-      // 開始播放第一首歌
-      await playTrack(customPlaylistQueue.value[0])
+      // 使用新的 useSpotify 播放列表功能
+      console.log('🎵 設置播放列表到 useSpotify...')
+      setPlaylist(customPlaylistQueue.value, 0)
+      
+      // 開始播放第一首歌 - 傳入完整播放列表
+      console.log('🎵 開始播放第一首:', customPlaylistQueue.value[0].name)
+      await playTrack(customPlaylistQueue.value[0], customPlaylistQueue.value, 0)
+      
+      // 啟用自定義播放隊列狀態
+      customPlaylistActive.value = true
       updatePlaylistStatus()
-      startPlaylistMonitoring()
+      
+      console.log('✅ 自定義播放隊列啟動成功')
     } else {
-      alert('無法建立播放隊列，請重試')
+      alert('無法建立播放隊列，請檢查網路連接或重試')
       customPlaylistActive.value = false
     }
     
@@ -596,82 +686,18 @@ const startCustomPlaylist = async () => {
   }
 }
 
-// 播放隊列監控
-const startPlaylistMonitoring = () => {
-  stopPlaylistMonitoring() // 確保只有一個監控在運行
+// 停止自定義播放隊列
+const stopCustomPlaylist = () => {
+  console.log('🛑 停止自定義播放隊列')
+  customPlaylistActive.value = false
+  customPlaylistQueue.value = []
+  customPlaylistIndex.value = 0
+  currentPlaylistStatus.value = ''
   
-  playlistMonitorInterval = setInterval(() => {
-    if (!customPlaylistActive.value) {
-      stopPlaylistMonitoring()
-      return
-    }
-    
-    // 檢查歌曲是否結束
-    const currentTimeSeconds = currentTime.value
-    const durationSeconds = duration.value
-    
-    // 如果歌曲接近結束（剩餘3秒）或已經結束
-    if (durationSeconds > 0 && currentTimeSeconds >= durationSeconds - 3) {
-      console.log('🎵 檢測到歌曲即將結束，準備播放下一首...')
-      playNextInCustomQueue()
-    }
-  }, 2000) // 每2秒檢查一次
+  // 清除 useSpotify 中的播放列表
+  clearPlaylist()
   
-  console.log('🎵 播放隊列監控已啟動')
-}
-
-const stopPlaylistMonitoring = () => {
-  if (playlistMonitorInterval) {
-    clearInterval(playlistMonitorInterval)
-    playlistMonitorInterval = null
-    console.log('🎵 播放隊列監控已停止')
-  }
-}
-
-// 播放隊列中的下一首歌曲
-const playNextInCustomQueue = async () => {
-  if (!customPlaylistActive.value || customPlaylistQueue.value.length === 0) {
-    console.log('🎵 播放隊列未啟動或為空')
-    return false
-  }
-  
-  const nextIndex = customPlaylistIndex.value + 1
-  
-  if (nextIndex >= customPlaylistQueue.value.length) {
-    console.log('🎵 自定義播放隊列播放完畢')
-    customPlaylistActive.value = false
-    currentPlaylistStatus.value = '播放隊列已完成 ✅'
-    stopPlaylistMonitoring()
-    
-    // 3秒後清除狀態
-    setTimeout(() => {
-      currentPlaylistStatus.value = ''
-    }, 3000)
-    return false
-  }
-  
-  currentPlaylistIndex.value = nextIndex
-  const nextTrack = customPlaylistQueue.value[nextIndex]
-  
-  console.log(`🎵 播放下一首: ${nextTrack.genreName} - ${nextTrack.name} (${nextIndex + 1}/${customPlaylistQueue.value.length})`)
-  
-  try {
-    await playTrack(nextTrack)
-    updatePlaylistStatus()
-    return true
-  } catch (error) {
-    console.error('❌ 播放下一首失敗:', error)
-    return false
-  }
-}
-
-// 更新當前隊列位置（當用戶手動切換歌曲時）
-const updateCurrentQueuePosition = (trackId) => {
-  const trackIndex = customPlaylistQueue.value.findIndex(track => track.id === trackId)
-  if (trackIndex !== -1) {
-    customPlaylistIndex.value = trackIndex
-    console.log(`🎵 更新隊列位置: ${trackIndex + 1}/${customPlaylistQueue.value.length}`)
-  }
+  console.log('✅ 自定義播放隊列已停止')
 }
 
 // 更新播放狀態顯示
@@ -681,65 +707,77 @@ const updatePlaylistStatus = () => {
     return
   }
   
-  const currentTrackInQueue = customPlaylistQueue.value[customPlaylistIndex.value]
+  // 從 useSpotify 獲取當前播放的歌曲索引
+  const currentIndex = currentTrackIndex.value || 0
+  const currentTrackInQueue = customPlaylistQueue.value[currentIndex]
+  
   if (currentTrackInQueue) {
     const groupNumber = currentTrackInQueue.genreGroup + 1
     const trackInGroup = currentTrackInQueue.trackIndexInGroup + 1
     const totalInGroup = currentTrackInQueue.totalInGroup
-    const overallProgress = `${customPlaylistIndex.value + 1}/${customPlaylistQueue.value.length}`
+    const overallProgress = `${currentIndex + 1}/${customPlaylistQueue.value.length}`
     
-    currentPlaylistStatus.value = `播放中：第${groupNumber}組 ${currentTrackInQueue.genreName} (${trackInGroup}/${totalInGroup}) | 總進度: ${overallProgress} | ${currentTrackInQueue.name}`
+    currentPlaylistStatus.value = `正在播放：第${groupNumber}組 ${currentTrackInQueue.genreName} (${trackInGroup}/${totalInGroup}) | 總進度: ${overallProgress}`
+    
+    // 更新本地索引以保持同步
+    customPlaylistIndex.value = currentIndex
   }
 }
 
-// 確保播放控制函數有效
-const handlePreviousTrack = () => {
-  console.log('點擊上一首按鈕')
-  
+// 監聽播放隊列變化來更新狀態
+watch([currentTrackIndex, currentTrack], () => {
   if (customPlaylistActive.value) {
-    // 自定義播放隊列模式下的上一首
-    const prevIndex = customPlaylistIndex.value - 1
-    if (prevIndex >= 0) {
-      customPlaylistIndex.value = prevIndex
-      const prevTrack = customPlaylistQueue.value[prevIndex]
-      playTrack(prevTrack)
-      updatePlaylistStatus()
-      console.log(`🎵 播放上一首: ${prevTrack.genreName} - ${prevTrack.name}`)
-    } else {
-      console.log('🎵 已經是第一首歌曲')
-    }
+    updatePlaylistStatus()
+  }
+})
+
+// 播放控制函數
+const handlePreviousTrack = () => {
+  console.log('⏮️ 點擊上一首按鈕')
+  
+  if (previousTrack && typeof previousTrack === 'function') {
+    previousTrack()
   } else {
-    // 普通模式
-    if (previousTrack && typeof previousTrack === 'function') {
-      previousTrack()
-    } else {
-      console.warn('previousTrack 函數不可用')
-    }
+    console.warn('previousTrack 函數不可用')
   }
 }
 
 const handleNextTrack = () => {
-  console.log('點擊下一首按鈕') 
+  console.log('⏭️ 點擊下一首按鈕') 
   
-  if (customPlaylistActive.value) {
-    // 自定義播放隊列模式下的下一首
-    playNextInCustomQueue()
+  if (nextTrack && typeof nextTrack === 'function') {
+    nextTrack()
   } else {
-    // 普通模式
-    if (nextTrack && typeof nextTrack === 'function') {
-      nextTrack()
-    } else {
-      console.warn('nextTrack 函數不可用')
-    }
+    console.warn('nextTrack 函數不可用')
   }
 }
 
 const handleTogglePlay = () => {
-  console.log('點擊播放/暫停按鈕')
+  console.log('⏯️ 點擊播放/暫停按鈕')
   if (togglePlay && typeof togglePlay === 'function') {
     togglePlay()
   } else {
     console.warn('togglePlay 函數不可用')
+  }
+}
+
+// 歌曲點擊處理
+const handleTrackClick = async (track) => {
+  try {
+    console.log('🎵 點擊歌曲:', track.name)
+    
+    // 如果正在使用自定義播放隊列，停止它
+    if (customPlaylistActive.value) {
+      console.log('🛑 停止自定義播放隊列，播放單首歌曲')
+      stopCustomPlaylist()
+    }
+    
+    // 播放單首歌曲（不設置播放列表）
+    await playTrack(track)
+    
+  } catch (error) {
+    console.error('❌ 播放歌曲失敗:', error)
+    alert('播放失敗: ' + error.message)
   }
 }
 
@@ -815,6 +853,11 @@ const handleVolumeChange = (event) => {
 const searchTracks = async () => {
   if (!searchQuery.value.trim() || !isSpotifyConnected.value) return
   
+  // 如果正在使用自定義播放隊列，停止它
+  if (customPlaylistActive.value) {
+    stopCustomPlaylist()
+  }
+  
   loading.value = true
   try {
     if (spotifySearch && typeof spotifySearch === 'function') {
@@ -832,17 +875,17 @@ const searchTracks = async () => {
 const handleSeek = (event) => {
   if (!duration.value || !seek || typeof seek !== 'function') return
   
-  const rect = event.currentTarget.getBoundingClientRect()
-  const clickX = event.clientX - rect.left
-  const progressPercent = clickX / rect.width
-  const positionMs = Math.floor(progressPercent * duration.value * 1000)
-  
   seek(event)
 }
 
 // 按曲風搜尋
 const searchByGenre = async (genre) => {
   selectedGenre.value = genre
+  
+  // 如果正在使用自定義播放隊列，停止它
+  if (customPlaylistActive.value) {
+    stopCustomPlaylist()
+  }
   
   loading.value = true
   try {
@@ -862,10 +905,8 @@ const setCurrentMode = async (mode) => {
   currentMode.value = mode
   
   // 如果切換到其他模式，停止自定義播放隊列
-  if (customPlaylistActive.value && mode !== 'custom') {
-    customPlaylistActive.value = false
-    stopPlaylistMonitoring()
-    currentPlaylistStatus.value = ''
+  if (customPlaylistActive.value) {
+    stopCustomPlaylist()
   }
   
   if (mode === 'favorites') {
@@ -1030,16 +1071,6 @@ watch(isPlaying, (playing) => {
   }
 }, { immediate: true })
 
-// 強制顯示均衡器（即使沒有播放歌曲也顯示）
-watch(() => isSpotifyConnected.value, (connected) => {
-  if (connected) {
-    // 初始化均衡器顯示
-    setTimeout(() => {
-      startEqualizerAnimation()
-    }, 1000)
-  }
-})
-
 // 監聽 Spotify 連接狀態
 watch(isSpotifyConnected, async (connected) => {
   if (connected && currentMode.value !== 'favorites') {
@@ -1074,9 +1105,6 @@ onUnmounted(() => {
   if (equalizerInterval) {
     clearInterval(equalizerInterval)
   }
-  
-  // 清理播放隊列監控
-  stopPlaylistMonitoring()
   
   document.removeEventListener('click', closeAllDropdowns)
 })
@@ -1235,26 +1263,50 @@ onUnmounted(() => {
   background-color: #e5e7eb;
 }
 
-/* 簡單的播放隊列控制區樣式 */
+/* 播放隊列控制區樣式 */
 .playlist-control-panel {
-  background-color: #20283d;
-  padding: 20px;
-  border-radius: 10px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%);
+  padding: 25px;
+  border-radius: 15px;
   margin-bottom: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.playlist-header h3 {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.playlist-header p {
+  color: #e5e7eb;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
 }
 
 .playlist-controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 15px;
+  gap: 20px;
   flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
 .control-group {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
   align-items: center;
+  gap: 10px;
+}
+
+.group-label {
+  color: #fbbf24;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .dropdown-wrapper {
@@ -1262,45 +1314,68 @@ onUnmounted(() => {
 }
 
 .genre-btn-simple {
-  background-color: #1d4ed8;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  min-width: 100px;
-}
-
-.genre-btn-simple:hover {
-  background-color: #2563eb;
-}
-
-.number-btn-simple {
-  background-color: #d97706;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  min-width: 60px;
-}
-
-.number-btn-simple:hover {
-  background-color: #f59e0b;
-}
-
-.play-btn-simple {
-  background-color: #f59e0b;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   color: white;
   padding: 12px 20px;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
+  min-width: 120px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
 }
 
-.play-btn-simple:hover {
-  background-color: #10b981;
+.genre-btn-simple:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.number-btn-simple {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 80px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.number-btn-simple:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.play-btn-simple {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+  min-width: 140px;
+}
+
+.play-btn-simple:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+.play-btn-simple:disabled {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 10px rgba(107, 114, 128, 0.2);
 }
 
 .dropdown-simple {
@@ -1308,24 +1383,28 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   background-color: white;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   z-index: 1000;
-  min-width: 120px;
-  max-height: 200px;
+  min-width: 140px;
+  max-height: 250px;
   overflow-y: auto;
+  margin-top: 5px;
 }
 
 .dropdown-item {
-  padding: 10px 15px;
+  padding: 12px 16px;
   cursor: pointer;
-  color: #333;
-  border-bottom: 1px solid #eee;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .dropdown-item:hover {
-  background-color: #f3f4f6;
+  background-color: #f8fafc;
+  color: #1f2937;
 }
 
 .dropdown-item:last-child {
@@ -1333,19 +1412,88 @@ onUnmounted(() => {
 }
 
 .plus-sign {
-  color: white;
-  font-size: 20px;
+  color: #fbbf24;
+  font-size: 24px;
   font-weight: bold;
 }
 
 .playlist-status {
-  text-align: center;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.status-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
-  margin-top: 15px;
-  font-size: 14px;
-  background-color: rgba(0, 0, 0, 0.3);
-  padding: 10px;
-  border-radius: 5px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stop-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.stop-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+}
+
+.status-details {
+  color: #e5e7eb;
+  font-size: 0.875rem;
+  text-align: center;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.playlist-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar-bg {
+  flex: 1;
+  height: 8px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #059669 50%, #fbbf24 100%);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.progress-text {
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .volume-slider {
@@ -1403,19 +1551,6 @@ onUnmounted(() => {
   transform: translateY(-2px) scale(1.05);
 }
 
-.genre-btn:active {
-  animation: bounce 0.3s ease-in-out;
-  transform: translateY(2px) scale(0.98);
-}
-
-@keyframes bounce {
-  0% { transform: translateY(0) scale(1); }
-  25% { transform: translateY(-8px) scale(1.02); }
-  50% { transform: translateY(-4px) scale(1.01); }
-  75% { transform: translateY(-2px) scale(1.005); }
-  100% { transform: translateY(0) scale(1); }
-}
-
 .heart-outline {
   color: #a2a3a3 !important;
   -webkit-text-stroke: 0 #758094;
@@ -1444,6 +1579,16 @@ onUnmounted(() => {
   .grid-cols-6 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  
+  .playlist-controls {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .control-group {
+    flex-direction: row;
+    gap: 10px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1466,6 +1611,21 @@ onUnmounted(() => {
   .control-button {
     width: 40px;
     height: 40px;
+  }
+  
+  .playlist-controls {
+    gap: 10px;
+  }
+  
+  .genre-btn-simple,
+  .number-btn-simple {
+    min-width: 100px;
+    padding: 10px 12px;
+  }
+  
+  .play-btn-simple {
+    min-width: 120px;
+    padding: 12px 20px;
   }
 }
 </style>
