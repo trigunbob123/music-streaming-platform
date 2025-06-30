@@ -262,7 +262,7 @@
           </div>
           
           <div v-if="customPlaylistActive" class="playlist-status">
-            當前播放：{{ currentPlaylistStatus }}
+            {{ currentPlaylistStatus }}
           </div>
         </div>
 
@@ -455,34 +455,6 @@ const {
   getUserPlaylists
 } = spotifyComposable
 
-// 確保播放控制函數有效
-const handlePreviousTrack = () => {
-  console.log('點擊上一首按鈕')
-  if (previousTrack && typeof previousTrack === 'function') {
-    previousTrack()
-  } else {
-    console.warn('previousTrack 函數不可用')
-  }
-}
-
-const handleNextTrack = () => {
-  console.log('點擊下一首按鈕') 
-  if (nextTrack && typeof nextTrack === 'function') {
-    nextTrack()
-  } else {
-    console.warn('nextTrack 函數不可用')
-  }
-}
-
-const handleTogglePlay = () => {
-  console.log('點擊播放/暫停按鈕')
-  if (togglePlay && typeof togglePlay === 'function') {
-    togglePlay()
-  } else {
-    console.warn('togglePlay 函數不可用')
-  }
-}
-
 // 基本數據
 const currentMode = ref('trending')
 const loading = ref(false)
@@ -527,9 +499,14 @@ const numberDropdownOpen = ref([false, false, false])
 
 // 自定義播放隊列狀態
 const customPlaylistActive = ref(false)
-const currentPlaylistQueue = ref([])
-const currentPlaylistIndex = ref(0)
+const customPlaylistQueue = ref([]) // 完整的播放隊列
+const customPlaylistIndex = ref(0) // 當前播放位置
 const currentPlaylistStatus = ref('')
+
+// 播放隊列監控
+let playlistMonitorInterval = null
+let lastPlayTime = ref(0)
+let lastTrackId = ref('')
 
 // 下拉選單控制函數
 const toggleGenreDropdown = (index) => {
@@ -552,44 +529,59 @@ const selectNumber = (index, number) => {
   numberDropdownOpen.value[index] = false
 }
 
-// 開始自定義播放隊列
+// 建立自定義播放隊列
 const startCustomPlaylist = async () => {
   try {
     loading.value = true
     customPlaylistActive.value = true
-    currentPlaylistQueue.value = []
-    currentPlaylistIndex.value = 0
+    customPlaylistQueue.value = []  // 清空隊列
+    customPlaylistIndex.value = 0
     
     console.log('🎵 開始建立自定義播放隊列...')
+    console.log('播放配置:', playlistConfig.value)
     
-    // 根據配置獲取歌曲
-    for (let i = 0; i < playlistConfig.value.length; i++) {
-      const config = playlistConfig.value[i]
-      console.log(`📀 獲取 ${config.genre} 曲風的 ${config.count} 首歌曲...`)
+    // 按順序建立播放隊列
+    for (let groupIndex = 0; groupIndex < playlistConfig.value.length; groupIndex++) {
+      const config = playlistConfig.value[groupIndex]
+      console.log(`📀 第${groupIndex + 1}組：獲取 ${config.genre} 曲風的 ${config.count} 首歌曲...`)
       
       const searchGenre = config.genre.toLowerCase().replace('-', ' ')
       
       try {
         const genreTracks = await spotifySearch(`genre:${searchGenre}`, 'track')
         if (genreTracks && genreTracks.length > 0) {
+          // 隨機選擇歌曲但保持設定的數量
           const shuffledTracks = [...genreTracks].sort(() => Math.random() - 0.5)
-          const selectedTracks = shuffledTracks.slice(0, config.count).map(track => ({
-            ...track,
-            genreGroup: i,
-            genreName: config.genre
-          }))
+          const selectedTracks = shuffledTracks.slice(0, config.count)
           
-          currentPlaylistQueue.value.push(...selectedTracks)
-          console.log(`✅ ${config.genre}: 已添加 ${selectedTracks.length} 首歌曲`)
+          // 為每首歌添加組別和位置信息
+          selectedTracks.forEach((track, trackIndex) => {
+            customPlaylistQueue.value.push({
+              ...track,
+              genreGroup: groupIndex,
+              genreName: config.genre,
+              trackIndexInGroup: trackIndex,
+              totalInGroup: config.count
+            })
+          })
+          
+          console.log(`✅ 第${groupIndex + 1}組 ${config.genre}: 已添加 ${selectedTracks.length} 首歌曲`)
+        } else {
+          console.warn(`⚠️ 第${groupIndex + 1}組 ${config.genre}: 找不到歌曲`)
         }
       } catch (error) {
-        console.error(`❌ 獲取 ${config.genre} 歌曲失敗:`, error)
+        console.error(`❌ 獲取第${groupIndex + 1}組 ${config.genre} 歌曲失敗:`, error)
       }
     }
     
-    if (currentPlaylistQueue.value.length > 0) {
-      await playTrack(currentPlaylistQueue.value[0])
+    console.log('🎵 播放隊列建立完成，總共', customPlaylistQueue.value.length, '首歌曲')
+    console.log('播放隊列:', customPlaylistQueue.value.map(t => `${t.genreName}-${t.name}`))
+    
+    if (customPlaylistQueue.value.length > 0) {
+      // 開始播放第一首歌
+      await playTrack(customPlaylistQueue.value[0])
       updatePlaylistStatus()
+      startPlaylistMonitoring()
     } else {
       alert('無法建立播放隊列，請重試')
       customPlaylistActive.value = false
@@ -604,46 +596,151 @@ const startCustomPlaylist = async () => {
   }
 }
 
-// 更新播放狀態顯示
-const updatePlaylistStatus = () => {
-  if (!customPlaylistActive.value || currentPlaylistQueue.value.length === 0) {
-    currentPlaylistStatus.value = ''
-    return
-  }
+// 播放隊列監控
+const startPlaylistMonitoring = () => {
+  stopPlaylistMonitoring() // 確保只有一個監控在運行
   
-  const currentTrackInQueue = currentPlaylistQueue.value[currentPlaylistIndex.value]
-  if (currentTrackInQueue) {
-    const genreGroup = currentTrackInQueue.genreGroup + 1
-    const trackInGenre = currentTrackInQueue.trackIndexInGroup
-    const totalInGenre = currentTrackInQueue.totalInGroup
-    const totalProgress = `${currentPlaylistIndex.value + 1}/${currentPlaylistQueue.value.length}`
+  playlistMonitorInterval = setInterval(() => {
+    if (!customPlaylistActive.value) {
+      stopPlaylistMonitoring()
+      return
+    }
     
-    currentPlaylistStatus.value = `第${genreGroup}組 ${currentTrackInQueue.genreName} (${trackInGenre}/${totalInGenre}) | 總進度: ${totalProgress} | ${currentTrackInQueue.name}`
+    // 檢查歌曲是否結束
+    const currentTimeSeconds = currentTime.value
+    const durationSeconds = duration.value
+    
+    // 如果歌曲接近結束（剩餘3秒）或已經結束
+    if (durationSeconds > 0 && currentTimeSeconds >= durationSeconds - 3) {
+      console.log('🎵 檢測到歌曲即將結束，準備播放下一首...')
+      playNextInCustomQueue()
+    }
+  }, 2000) // 每2秒檢查一次
+  
+  console.log('🎵 播放隊列監控已啟動')
+}
+
+const stopPlaylistMonitoring = () => {
+  if (playlistMonitorInterval) {
+    clearInterval(playlistMonitorInterval)
+    playlistMonitorInterval = null
+    console.log('🎵 播放隊列監控已停止')
   }
 }
 
-// 自動播放下一首（自定義隊列）
-const playNextInCustomPlaylist = async () => {
-  if (!customPlaylistActive.value || currentPlaylistQueue.value.length === 0) {
+// 播放隊列中的下一首歌曲
+const playNextInCustomQueue = async () => {
+  if (!customPlaylistActive.value || customPlaylistQueue.value.length === 0) {
+    console.log('🎵 播放隊列未啟動或為空')
     return false
   }
   
-  currentPlaylistIndex.value++
+  const nextIndex = customPlaylistIndex.value + 1
   
-  if (currentPlaylistIndex.value >= currentPlaylistQueue.value.length) {
+  if (nextIndex >= customPlaylistQueue.value.length) {
     console.log('🎵 自定義播放隊列播放完畢')
     customPlaylistActive.value = false
-    currentPlaylistStatus.value = '播放隊列已完成'
+    currentPlaylistStatus.value = '播放隊列已完成 ✅'
+    stopPlaylistMonitoring()
+    
+    // 3秒後清除狀態
     setTimeout(() => {
       currentPlaylistStatus.value = ''
     }, 3000)
     return false
   }
   
-  const nextTrack = currentPlaylistQueue.value[currentPlaylistIndex.value]
-  await playTrack(nextTrack)
-  updatePlaylistStatus()
-  return true
+  currentPlaylistIndex.value = nextIndex
+  const nextTrack = customPlaylistQueue.value[nextIndex]
+  
+  console.log(`🎵 播放下一首: ${nextTrack.genreName} - ${nextTrack.name} (${nextIndex + 1}/${customPlaylistQueue.value.length})`)
+  
+  try {
+    await playTrack(nextTrack)
+    updatePlaylistStatus()
+    return true
+  } catch (error) {
+    console.error('❌ 播放下一首失敗:', error)
+    return false
+  }
+}
+
+// 更新當前隊列位置（當用戶手動切換歌曲時）
+const updateCurrentQueuePosition = (trackId) => {
+  const trackIndex = customPlaylistQueue.value.findIndex(track => track.id === trackId)
+  if (trackIndex !== -1) {
+    customPlaylistIndex.value = trackIndex
+    console.log(`🎵 更新隊列位置: ${trackIndex + 1}/${customPlaylistQueue.value.length}`)
+  }
+}
+
+// 更新播放狀態顯示
+const updatePlaylistStatus = () => {
+  if (!customPlaylistActive.value || customPlaylistQueue.value.length === 0) {
+    currentPlaylistStatus.value = ''
+    return
+  }
+  
+  const currentTrackInQueue = customPlaylistQueue.value[customPlaylistIndex.value]
+  if (currentTrackInQueue) {
+    const groupNumber = currentTrackInQueue.genreGroup + 1
+    const trackInGroup = currentTrackInQueue.trackIndexInGroup + 1
+    const totalInGroup = currentTrackInQueue.totalInGroup
+    const overallProgress = `${customPlaylistIndex.value + 1}/${customPlaylistQueue.value.length}`
+    
+    currentPlaylistStatus.value = `播放中：第${groupNumber}組 ${currentTrackInQueue.genreName} (${trackInGroup}/${totalInGroup}) | 總進度: ${overallProgress} | ${currentTrackInQueue.name}`
+  }
+}
+
+// 確保播放控制函數有效
+const handlePreviousTrack = () => {
+  console.log('點擊上一首按鈕')
+  
+  if (customPlaylistActive.value) {
+    // 自定義播放隊列模式下的上一首
+    const prevIndex = customPlaylistIndex.value - 1
+    if (prevIndex >= 0) {
+      customPlaylistIndex.value = prevIndex
+      const prevTrack = customPlaylistQueue.value[prevIndex]
+      playTrack(prevTrack)
+      updatePlaylistStatus()
+      console.log(`🎵 播放上一首: ${prevTrack.genreName} - ${prevTrack.name}`)
+    } else {
+      console.log('🎵 已經是第一首歌曲')
+    }
+  } else {
+    // 普通模式
+    if (previousTrack && typeof previousTrack === 'function') {
+      previousTrack()
+    } else {
+      console.warn('previousTrack 函數不可用')
+    }
+  }
+}
+
+const handleNextTrack = () => {
+  console.log('點擊下一首按鈕') 
+  
+  if (customPlaylistActive.value) {
+    // 自定義播放隊列模式下的下一首
+    playNextInCustomQueue()
+  } else {
+    // 普通模式
+    if (nextTrack && typeof nextTrack === 'function') {
+      nextTrack()
+    } else {
+      console.warn('nextTrack 函數不可用')
+    }
+  }
+}
+
+const handleTogglePlay = () => {
+  console.log('點擊播放/暫停按鈕')
+  if (togglePlay && typeof togglePlay === 'function') {
+    togglePlay()
+  } else {
+    console.warn('togglePlay 函數不可用')
+  }
 }
 
 // 點擊外部關閉下拉選單
@@ -763,6 +860,13 @@ const searchByGenre = async (genre) => {
 // 設置模式
 const setCurrentMode = async (mode) => {
   currentMode.value = mode
+  
+  // 如果切換到其他模式，停止自定義播放隊列
+  if (customPlaylistActive.value && mode !== 'custom') {
+    customPlaylistActive.value = false
+    stopPlaylistMonitoring()
+    currentPlaylistStatus.value = ''
+  }
   
   if (mode === 'favorites') {
     displayedTracks.value = [...favoriteTracks.value]
@@ -933,14 +1037,6 @@ watch(() => isSpotifyConnected.value, (connected) => {
     setTimeout(() => {
       startEqualizerAnimation()
     }, 1000)
-  }
-})
-
-// 監聽當前播放歌曲變化 - 移除舊的自動播放邏輯
-watch(currentTrack, async (newTrack, oldTrack) => {
-  // 這裡移除舊的自動播放邏輯，因為我們現在使用時間監控
-  if (customPlaylistActive.value && newTrack && newTrack.id) {
-    updatePlaylistStatus()
   }
 })
 
@@ -1247,6 +1343,9 @@ onUnmounted(() => {
   color: white;
   margin-top: 15px;
   font-size: 14px;
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 5px;
 }
 
 .volume-slider {
