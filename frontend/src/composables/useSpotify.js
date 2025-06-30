@@ -1,4 +1,3 @@
-// frontend/src/composables/useSpotify.js
 import { ref, onMounted, onUnmounted } from 'vue'
 
 export function useSpotify() {
@@ -28,6 +27,7 @@ export function useSpotify() {
   // 🆕 播放完畢檢測
   let lastPosition = 0
   let trackEndTimer = null
+  let lastTrackId = ''
   
   // Spotify 配置
   const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID
@@ -116,11 +116,12 @@ export function useSpotify() {
     }
   }
 
-  // 🆕 檢測歌曲是否播放完畢
+  // 🆕 改進的歌曲結束檢測
   const checkTrackEnd = (state) => {
     const position = state.position
     const duration = state.duration
-    const isPlaying = !state.paused
+    const isCurrentlyPlaying = !state.paused
+    const currentTrackId = state.track_window?.current_track?.id
     
     // 清除之前的計時器
     if (trackEndTimer) {
@@ -128,24 +129,44 @@ export function useSpotify() {
       trackEndTimer = null
     }
     
-    // 如果歌曲正在播放且接近結束（剩餘3秒內）
-    if (isPlaying && duration > 0 && (duration - position) <= 3000) {
+    // 檢查是否為新歌曲
+    if (currentTrackId && currentTrackId !== lastTrackId) {
+      console.log('🎵 檢測到新歌曲:', state.track_window.current_track.name)
+      lastTrackId = currentTrackId
+      lastPosition = 0
+    }
+    
+    // 方法1: 檢測歌曲接近結束
+    if (isCurrentlyPlaying && duration > 30000 && (duration - position) <= 2000) {
       console.log('🎵 歌曲即將結束，準備播放下一首...')
       
-      // 設置計時器在歌曲結束時播放下一首
-      const remainingTime = duration - position
+      const remainingTime = Math.max(100, duration - position) // 至少等待100ms
       trackEndTimer = setTimeout(() => {
         if (autoPlayNext.value) {
+          console.log('⏰ 計時器觸發，播放下一首')
           handleTrackEnd()
         }
       }, remainingTime)
     }
     
-    // 檢測播放停止（可能是歌曲結束）
-    if (!isPlaying && lastPosition > 0 && position === 0) {
-      console.log('🎵 檢測到歌曲可能已結束')
+    // 方法2: 檢測歌曲停止且位置重置（歌曲結束的另一個信號）
+    if (!isCurrentlyPlaying && lastPosition > 10000 && position < 5000) {
+      console.log('🎵 檢測到歌曲可能已結束 (停止 + 位置重置)')
       if (autoPlayNext.value) {
-        handleTrackEnd()
+        // 延遲一下再執行，確保狀態穩定
+        setTimeout(() => {
+          handleTrackEnd()
+        }, 500)
+      }
+    }
+    
+    // 方法3: 檢測播放進度卡住不動（可能是歌曲結束）
+    if (isCurrentlyPlaying && duration > 0 && Math.abs(position - lastPosition) < 100 && position > duration - 5000) {
+      console.log('🎵 檢測到播放進度卡住，可能歌曲已結束')
+      if (autoPlayNext.value) {
+        setTimeout(() => {
+          handleTrackEnd()
+        }, 1000)
       }
     }
     
@@ -154,11 +175,12 @@ export function useSpotify() {
 
   // 🆕 處理歌曲結束
   const handleTrackEnd = async () => {
-    console.log('🎵 歌曲結束，嘗試播放下一首...')
+    console.log('🎵 處理歌曲結束，嘗試播放下一首...')
     
     try {
       // 如果有播放列表，播放下一首
       if (currentPlaylist.value.length > 0) {
+        console.log('📋 使用本地播放列表播放下一首')
         await playNextInPlaylist()
       } else {
         // 如果沒有播放列表，嘗試讓 Spotify 自動播放下一首
@@ -172,7 +194,10 @@ export function useSpotify() {
 
   // 🆕 播放播放列表中的下一首
   const playNextInPlaylist = async () => {
-    if (currentPlaylist.value.length === 0) return
+    if (currentPlaylist.value.length === 0) {
+      console.log('❌ 播放列表為空，無法播放下一首')
+      return false
+    }
     
     let nextIndex = currentTrackIndex.value + 1
     
@@ -180,34 +205,42 @@ export function useSpotify() {
     if (repeatMode.value === 'track') {
       // 重複當前歌曲
       nextIndex = currentTrackIndex.value
+      console.log('🔁 重複模式：重複當前歌曲')
     } else if (nextIndex >= currentPlaylist.value.length) {
       if (repeatMode.value === 'context') {
         // 重複播放列表
         nextIndex = 0
+        console.log('🔁 重複模式：重複播放列表')
       } else {
         // 播放列表結束
-        console.log('🎵 播放列表已結束')
-        return
+        console.log('✅ 播放列表已結束')
+        return false
       }
     }
     
     // 處理隨機播放
     if (isShuffled.value && repeatMode.value !== 'track') {
       nextIndex = Math.floor(Math.random() * currentPlaylist.value.length)
+      console.log('🔀 隨機播放：選擇隨機歌曲', nextIndex)
     }
     
     currentTrackIndex.value = nextIndex
-    const nextTrack = currentPlaylist.value[nextIndex]
+    const nextTrackToPlay = currentPlaylist.value[nextIndex]
     
-    console.log('🎵 播放播放列表中的下一首:', nextTrack.name)
-    await playTrack(nextTrack)
+    console.log(`🎵 播放下一首: ${nextTrackToPlay.name} (${nextIndex + 1}/${currentPlaylist.value.length})`)
+    
+    // 添加延遲避免API請求衝突
+    await new Promise(resolve => setTimeout(resolve, 500))
+    await playTrack(nextTrackToPlay)
+    
+    return true
   }
 
   // 🆕 設置播放列表
   const setPlaylist = (tracks, startIndex = 0) => {
     currentPlaylist.value = tracks
     currentTrackIndex.value = startIndex
-    console.log('📋 設置播放列表:', tracks.length, '首歌曲')
+    console.log('📋 設置播放列表:', tracks.length, '首歌曲，起始索引:', startIndex)
   }
 
   // 🆕 清除播放列表
@@ -360,7 +393,12 @@ export function useSpotify() {
       spotifyPlayer.value.addListener('player_state_changed', (state) => {
         if (!state) return
 
-        console.log('🎵 播放狀態更新')
+        console.log('🎵 播放狀態更新:', {
+          track: state.track_window?.current_track?.name,
+          position: Math.floor(state.position / 1000),
+          duration: Math.floor(state.duration / 1000),
+          paused: state.paused
+        })
         
         // 更新基本狀態
         currentTrack.value = state.track_window.current_track
@@ -414,8 +452,9 @@ export function useSpotify() {
     }
   }
 
-  // Spotify API 請求包裝
-  const spotifyAPI = async (endpoint, options = {}) => {
+  // 🔧 改進的 Spotify API 請求包裝（添加重試和速率限制處理）
+  const spotifyAPI = async (endpoint, options = {}, retryCount = 0) => {
+    const MAX_RETRIES = 3
     const url = `https://api.spotify.com/v1${endpoint}`
     const headers = {
       'Authorization': `Bearer ${accessToken.value}`,
@@ -424,7 +463,7 @@ export function useSpotify() {
     }
 
     try {
-      console.log('🔄 發送 Spotify API 請求:', endpoint)
+      console.log('🔄 發送 Spotify API 請求:', endpoint, retryCount > 0 ? `(重試 ${retryCount})` : '')
       
       const response = await fetch(url, {
         ...options,
@@ -433,10 +472,44 @@ export function useSpotify() {
 
       console.log('📨 API 響應狀態:', response.status, response.statusText)
 
+      // 處理 429 Too Many Requests（速率限制）
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After') || '1'
+        const waitTime = Math.min(parseInt(retryAfter) * 1000, 10000) // 最多等待10秒
+        
+        console.log(`⏳ API 速率限制，等待 ${waitTime}ms 後重試...`)
+        
+        if (retryCount < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, waitTime))
+          return spotifyAPI(endpoint, options, retryCount + 1)
+        } else {
+          throw new Error('API 請求速率限制，請稍後再試')
+        }
+      }
+
+      // 處理 503 Service Unavailable（服務器錯誤）
+      if (response.status === 503) {
+        console.log('⚠️ Spotify 服務暫時不可用')
+        
+        if (retryCount < MAX_RETRIES) {
+          const waitTime = Math.pow(2, retryCount) * 1000 // 指數退避：1s, 2s, 4s
+          console.log(`⏳ 等待 ${waitTime}ms 後重試...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime))
+          return spotifyAPI(endpoint, options, retryCount + 1)
+        } else {
+          throw new Error('Spotify 服務暫時不可用，請稍後再試')
+        }
+      }
+
       if (response.status === 401) {
         console.log('🔄 Token 可能已過期，嘗試刷新...')
         await refreshToken()
-        return spotifyAPI(endpoint, options)
+        // 重試請求（只重試一次避免無限循環）
+        if (retryCount === 0) {
+          return spotifyAPI(endpoint, options, 1)
+        } else {
+          throw new Error('認證失敗，請重新登入')
+        }
       }
 
       if (response.status === 404) {
@@ -448,6 +521,7 @@ export function useSpotify() {
       }
 
       if (!response.ok) {
+        // 嘗試讀取錯誤響應
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`
         try {
           const errorData = await response.json()
@@ -460,20 +534,17 @@ export function useSpotify() {
         throw new Error(errorMessage)
       }
 
+      // 🔧 修正：檢查響應是否有內容
       const contentLength = response.headers.get('content-length')
       const contentType = response.headers.get('content-type')
       
-      console.log('📋 響應詳情:', {
-        contentLength,
-        contentType,
-        hasContent: contentLength !== '0'
-      })
-
+      // 如果是 PUT/POST 請求且返回 204 No Content，直接返回成功
       if (response.status === 204 || contentLength === '0') {
         console.log('✅ 操作成功 (無響應內容)')
         return { success: true }
       }
 
+      // 只有當有內容且是 JSON 時才嘗試解析
       if (contentType && contentType.includes('application/json')) {
         try {
           const data = await response.json()
@@ -481,6 +552,7 @@ export function useSpotify() {
           return data
         } catch (jsonError) {
           console.error('❌ JSON 解析失敗:', jsonError)
+          // 如果 JSON 解析失敗但狀態碼是成功的，說明操作可能成功了
           if (response.ok) {
             console.log('✅ 操作可能成功 (JSON 解析失敗但狀態碼正常)')
             return { success: true }
@@ -488,6 +560,7 @@ export function useSpotify() {
           throw new Error('響應格式錯誤')
         }
       } else {
+        // 非 JSON 響應
         const text = await response.text()
         console.log('📝 非 JSON 響應:', text)
         return { success: true, data: text }
@@ -495,6 +568,15 @@ export function useSpotify() {
 
     } catch (error) {
       console.error('❌ Spotify API 請求失敗:', error)
+      
+      // 如果是網路錯誤且還有重試次數，則重試
+      if ((error.name === 'TypeError' || error.message.includes('fetch')) && retryCount < MAX_RETRIES) {
+        const waitTime = Math.pow(2, retryCount) * 1000
+        console.log(`🔄 網路錯誤，${waitTime}ms 後重試...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+        return spotifyAPI(endpoint, options, retryCount + 1)
+      }
+      
       throw error
     }
   }
@@ -658,28 +740,50 @@ export function useSpotify() {
     }
   }
 
+  // 🔧 改進的音量設置函數（添加節流和錯誤處理）
+  let volumeTimeout = null
   const setVolume = async (volumePercent) => {
     try {
+      // 確保 volumePercent 是數字
       let newVolume
       
       if (volumePercent !== undefined && volumePercent !== null) {
+        // 如果傳入了具體數值，使用該數值
         newVolume = parseInt(volumePercent)
       } else {
+        // 如果沒有傳入數值，增加音量
         newVolume = (volume.value + 25) % 125
         if (newVolume > 100) newVolume = 0
       }
       
+      // 確保音量在有效範圍內
       newVolume = Math.max(0, Math.min(100, newVolume))
       
       console.log('🔊 設置音量為:', newVolume + '%')
       
+      // 立即更新本地狀態以提供即時反饋
       volume.value = newVolume
       
-      await spotifyAPI(`/me/player/volume?volume_percent=${newVolume}`, { method: 'PUT' })
+      // 使用節流來避免過於頻繁的 API 請求
+      if (volumeTimeout) {
+        clearTimeout(volumeTimeout)
+      }
       
-      console.log('✅ 音量設置成功')
+      volumeTimeout = setTimeout(async () => {
+        try {
+          // 發送到 Spotify API（使用較低優先級，允許失敗）
+          await spotifyAPI(`/me/player/volume?volume_percent=${newVolume}`, { method: 'PUT' })
+          console.log('✅ 音量設置成功')
+        } catch (error) {
+          console.warn('⚠️ 音量設置 API 請求失敗（但本地音量已更新）:', error.message)
+          // 不顯示錯誤 alert，因為這會干擾用戶體驗
+          // 本地音量狀態已經更新，用戶可以繼續使用
+        }
+      }, 500) // 延遲 500ms 發送請求，避免過於頻繁
+      
     } catch (error) {
       console.error('❌ 設置音量失敗:', error)
+      // 不要顯示音量錯誤的 alert，因為這會干擾用戶體驗
     }
   }
 
@@ -706,7 +810,7 @@ export function useSpotify() {
     }
   }
 
-  // 搜尋功能
+  // 🔍 搜尋功能
   const searchTracks = async (query, type = 'track') => {
     try {
       if (!query.trim()) return []
