@@ -9,18 +9,18 @@
           class="h-auto w-20 "
         />
         <div class="flex space-x-2">
-          <button v-if="!isSpotifyConnected && spotifyConfigured" @click="connectSpotify" 
-                  class="text-green-400 hover:text-green-300 text-sm">
-            <font-awesome-icon :icon="['fab', 'spotify']" class="mr-1" />
-            連接 Spotify
+          <button v-if="!isJamendoConnected && jamendoConfigured" @click="connectJamendo" 
+                  class="text-orange-400 hover:text-orange-300 text-sm">
+            <font-awesome-icon icon="music" class="mr-1" />
+            連接 Jamendo
           </button>
-          <button v-else-if="isSpotifyConnected" @click="disconnectSpotify" 
-                  class="text-green-400 hover:text-green-300 text-sm">
-            <font-awesome-icon :icon="['fab', 'spotify']" class="mr-1" />
+          <button v-else-if="isJamendoConnected" @click="disconnectJamendo" 
+                  class="text-orange-400 hover:text-orange-300 text-sm">
+            <font-awesome-icon icon="music" class="mr-1" />
             已連接
           </button>
           <span v-else class="text-gray-400 text-xs">
-            Spotify 未配置
+            Jamendo 未配置
           </span>
         </div>
       </div>
@@ -36,11 +36,11 @@
                 class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700"
                 :class="{ 'bg-gray-700': currentMode === 'latest' }">
           <font-awesome-icon icon="music" class="mr-3" />
-          新歌
+          最新音樂
         </button>
-        <button @click="setCurrentMode('trending')" 
+        <button @click="setCurrentMode('popular')" 
                 class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700"
-                :class="{ 'bg-gray-700': currentMode === 'trending' }">
+                :class="{ 'bg-gray-700': currentMode === 'popular' }">
           <font-awesome-icon icon="fire" class="mr-3" />
           熱門歌曲
         </button>
@@ -52,12 +52,12 @@
         </button>
       </nav>
 
-      <!-- Spotify 播放器狀態 -->
-      <div v-if="isSpotifyConnected" class="mt-auto">
-        <div class="bg-green-900 p-3 rounded-lg">
-          <div class="flex items-center text-green-300 text-sm">
-            <font-awesome-icon :icon="['fab', 'spotify']" class="mr-2" />
-            <span>Spotify 已連接</span>
+      <!-- Jamendo 播放器狀態 -->
+      <div v-if="isJamendoConnected" class="mt-auto">
+        <div class="bg-orange-900 p-3 rounded-lg">
+          <div class="flex items-center text-orange-300 text-sm">
+            <font-awesome-icon icon="music" class="mr-2" />
+            <span>Jamendo 已連接</span>
           </div>
         </div>
       </div>
@@ -72,22 +72,22 @@
           <div class="flex items-center min-w-0 flex-1" v-if="currentTrack.name">
             <!-- 封面 -->
             <div class="w-20 h-20 rounded-lg mr-4 overflow-hidden flex-shrink-0">
-              <img v-if="currentTrack.album?.images?.[0]?.url" 
-                   :src="currentTrack.album.images[0].url" 
+              <img v-if="currentTrack.image" 
+                   :src="currentTrack.image" 
                    :alt="currentTrack.name" 
                    class="w-full h-full object-cover" />
-              <div v-else class="w-full h-full bg-gradient-to-br from-green-500 to-purple-600 flex items-center justify-center">
+              <div v-else class="w-full h-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                 <font-awesome-icon icon="music" class="text-white text-2xl" />
               </div>
             </div>
             <!-- 歌曲信息 -->
             <div class="min-w-0 flex-1">
               <p class="font-medium text-lg truncate" :title="currentTrack.name">{{ currentTrack.name }}</p>
-              <p class="text-sm text-gray-300 truncate" :title="currentTrack.artists?.map(a => a.name).join(', ')">
-                {{ currentTrack.artists?.map(a => a.name).join(', ') }}
+              <p class="text-sm text-gray-300 truncate" :title="currentTrack.artist_name">
+                {{ currentTrack.artist_name }}
               </p>
-              <p class="text-xs text-green-400 truncate" v-if="currentTrack.album?.name" :title="currentTrack.album.name">
-                {{ currentTrack.album.name }}
+              <p class="text-xs text-orange-400 truncate" v-if="currentTrack.album_name" :title="currentTrack.album_name">
+                {{ currentTrack.album_name }}
               </p>
             </div>
           </div>
@@ -132,12 +132,12 @@
             <!-- 播放模式控制 -->
             <div class="flex items-center space-x-2">
               <button @click="toggleShuffle" class="btn btn-circle bg-transparent text-white hover:bg-gray-700"
-                      :class="{ 'text-green-400': isShuffled }">
+                      :class="{ 'text-orange-400': isShuffled }">
                 <font-awesome-icon icon="random" class="text-lg" />
               </button>
               <button @click="toggleRepeat" class="btn btn-circle bg-transparent text-white hover:bg-gray-700"
-                      :class="{ 'text-green-400': repeatMode !== 'off' }">
-                <font-awesome-icon :icon="repeatMode === 'track' ? 'redo' : 'repeat'" class="text-lg" />
+                      :class="{ 'text-orange-400': repeatMode !== 'off' }">
+                <font-awesome-icon :icon="repeatMode === 'one' ? 'redo' : 'repeat'" class="text-lg" />
               </button>
             </div>
 
@@ -161,21 +161,21 @@
       </div>
 
       <!-- 搜尋欄 -->
-      <div class="p-2 pb-0" v-if="isSpotifyConnected">
+      <div class="p-2 pb-0" v-if="isJamendoConnected">
         <div class="relative inline-block w-full">
           <input v-model="searchQuery" @input="searchTracks" 
                  placeholder="🔎搜尋歌曲、藝人或專輯..." 
-                 class="w-full py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                 class="w-full py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
         </div>
       </div>
 
       <!-- 主要內容 -->
       <div class="p-6">
         <!-- 自定義播放隊列控制區 -->
-        <div class="playlist-control-panel" v-if="isSpotifyConnected">
+        <div class="playlist-control-panel" v-if="isJamendoConnected">
           <div class="playlist-header">
             <h3 class="text-white text-lg font-bold mb-4">🎵 自定義播放隊列</h3>
-            <p class="text-gray-300 text-sm mb-4">設定三組曲風和數量，系統將按順序播放</p>
+            <p class="text-gray-300 text-sm mb-4">設定三組標籤和數量，系統將按順序播放</p>
           </div>
           
           <div class="playlist-controls">
@@ -183,13 +183,13 @@
             <div class="control-group">
               <span class="group-label">第1組</span>
               <div class="dropdown-wrapper">
-                <button class="genre-btn-simple" @click="toggleGenreDropdown(0)">
-                  {{ playlistConfig[0].genre }} ▼
+                <button class="genre-btn-simple" @click="toggleTagDropdown(0)">
+                  {{ playlistConfig[0].tag }} ▼
                 </button>
-                <div v-if="genreDropdownOpen[0]" class="dropdown-simple">
-                  <div v-for="genre in availableGenres" :key="genre" 
-                       @click="selectGenre(0, genre)" class="dropdown-item">
-                    {{ genre }}
+                <div v-if="tagDropdownOpen[0]" class="dropdown-simple">
+                  <div v-for="tag in availableTags" :key="tag" 
+                       @click="selectTag(0, tag)" class="dropdown-item">
+                    {{ tag }}
                   </div>
                 </div>
               </div>
@@ -212,13 +212,13 @@
             <div class="control-group">
               <span class="group-label">第2組</span>
               <div class="dropdown-wrapper">
-                <button class="genre-btn-simple" @click="toggleGenreDropdown(1)">
-                  {{ playlistConfig[1].genre }} ▼
+                <button class="genre-btn-simple" @click="toggleTagDropdown(1)">
+                  {{ playlistConfig[1].tag }} ▼
                 </button>
-                <div v-if="genreDropdownOpen[1]" class="dropdown-simple">
-                  <div v-for="genre in availableGenres" :key="genre" 
-                       @click="selectGenre(1, genre)" class="dropdown-item">
-                    {{ genre }}
+                <div v-if="tagDropdownOpen[1]" class="dropdown-simple">
+                  <div v-for="tag in availableTags" :key="tag" 
+                       @click="selectTag(1, tag)" class="dropdown-item">
+                    {{ tag }}
                   </div>
                 </div>
               </div>
@@ -241,13 +241,13 @@
             <div class="control-group">
               <span class="group-label">第3組</span>
               <div class="dropdown-wrapper">
-                <button class="genre-btn-simple" @click="toggleGenreDropdown(2)">
-                  {{ playlistConfig[2].genre }} ▼
+                <button class="genre-btn-simple" @click="toggleTagDropdown(2)">
+                  {{ playlistConfig[2].tag }} ▼
                 </button>
-                <div v-if="genreDropdownOpen[2]" class="dropdown-simple">
-                  <div v-for="genre in availableGenres" :key="genre" 
-                       @click="selectGenre(2, genre)" class="dropdown-item">
-                    {{ genre }}
+                <div v-if="tagDropdownOpen[2]" class="dropdown-simple">
+                  <div v-for="tag in availableTags" :key="tag" 
+                       @click="selectTag(2, tag)" class="dropdown-item">
+                    {{ tag }}
                   </div>
                 </div>
               </div>
@@ -300,22 +300,22 @@
           </div>
         </div>
 
-        <!-- 曲風按鈕 -->
-        <div v-if="isSpotifyConnected && currentMode !== 'favorites'">
+        <!-- 標籤按鈕 -->
+        <div v-if="isJamendoConnected && currentMode !== 'favorites'">
           <div class="grid grid-cols-5 gap-4 mb-4">
-            <button v-for="genre in spotifyGenres.slice(0, 5)" :key="genre" 
-                    @click="searchByGenre(genre)"
-                    class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105"
-                    :class="selectedGenre === genre ? 'bg-pink-500' : 'bg-blue-800'">
-              {{ genre.toUpperCase() }}
+            <button v-for="tag in jamendoTags.slice(0, 5)" :key="tag" 
+                    @click="searchByTag(tag)"
+                    class="genre-btn py-3 px-6 rounded-lg text-white hover:bg-orange-400 transition-all duration-300 transform hover:scale-105"
+                    :class="selectedTag === tag ? 'bg-orange-500' : 'bg-orange-600'">
+              {{ tag.toUpperCase() }}
             </button>
           </div>
           <div class="grid grid-cols-5 gap-4 mb-8">
-            <button v-for="genre in spotifyGenres.slice(5, 10)" :key="genre" 
-                    @click="searchByGenre(genre)"
-                    class="genre-btn py-3 px-6 rounded-lg text-black hover:bg-pink-400 transition-all duration-300 transform hover:scale-105"
-                    :class="selectedGenre === genre ? 'bg-pink-500' : 'bg-blue-800'">
-              {{ genre.toUpperCase() }}
+            <button v-for="tag in jamendoTags.slice(5, 10)" :key="tag" 
+                    @click="searchByTag(tag)"
+                    class="genre-btn py-3 px-6 rounded-lg text-white hover:bg-orange-400 transition-all duration-300 transform hover:scale-105"
+                    :class="selectedTag === tag ? 'bg-orange-500' : 'bg-orange-600'">
+              {{ tag.toUpperCase() }}
             </button>
           </div>
         </div>
@@ -331,7 +331,7 @@
 
         <!-- 載入中 -->
         <div v-if="loading" class="flex justify-center items-center h-32 mb-6">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
           <span class="ml-3 text-lg">載入中...</span>
         </div>
 
@@ -339,7 +339,7 @@
         <div class="grid grid-cols-6 gap-4">
           <div v-for="track in displayedTracks" :key="track.id" 
                class="music-card bg-white rounded-lg p-3 shadow-md hover:shadow-lg cursor-pointer border relative"
-               :class="{ 'ring-2 ring-green-500': currentTrack.id === track.id }">
+               :class="{ 'ring-2 ring-orange-500': currentTrack.id === track.id }">
             
             <!-- 愛心收藏按鈕 -->
             <button @click.stop="toggleFavorite(track)" 
@@ -353,18 +353,18 @@
             <!-- 封面 -->
             <div class="w-full h-24 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative"
                  @click="handleTrackClick(track)">
-              <img v-if="track.album?.images?.[0]?.url" 
-                   :src="track.album.images[0].url" 
+              <img v-if="track.image" 
+                   :src="track.image" 
                    :alt="track.name" 
                    class="w-full h-full object-cover" />
-              <div v-else class="w-full h-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center">
+              <div v-else class="w-full h-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
                 <font-awesome-icon icon="music" class="text-white text-2xl" />
               </div>
               
               <!-- 播放指示器 -->
               <div v-if="currentTrack.id === track.id && isPlaying" 
                    class="absolute inset-0 bg-black/30 flex items-center justify-center">
-                <div class="bg-green-500 text-white rounded-full p-2 animate-pulse">
+                <div class="bg-orange-500 text-white rounded-full p-2 animate-pulse">
                   <font-awesome-icon icon="play" class="text-sm" />
                 </div>
               </div>
@@ -375,39 +375,39 @@
               <h3 class="font-bold text-sm text-gray-800 truncate mb-1" :title="track.name">
                 {{ track.name }}
               </h3>
-              <p class="text-xs text-gray-600 truncate mb-1" :title="track.artists?.map(a => a.name).join(', ')">
-                {{ track.artists?.map(a => a.name).join(', ') }}
+              <p class="text-xs text-gray-600 truncate mb-1" :title="track.artist_name">
+                {{ track.artist_name }}
               </p>
-              <p class="text-xs text-gray-500 truncate mb-2" v-if="track.album?.name" :title="track.album.name">
-                {{ track.album.name }}
+              <p class="text-xs text-gray-500 truncate mb-2" v-if="track.album_name" :title="track.album_name">
+                {{ track.album_name }}
               </p>
               
               <!-- 底部信息 -->
               <div class="flex justify-between items-center text-xs">
-                <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full">Spotify</span>
-                <span class="text-gray-500" v-if="track.duration_ms">
-                  {{ formatTime(Math.floor(track.duration_ms / 1000)) }}
+                <span class="px-2 py-1 bg-orange-100 text-orange-700 rounded-full">Jamendo</span>
+                <span class="text-gray-500" v-if="track.duration">
+                  {{ formatTime(track.duration) }}
                 </span>
               </div>
             </div>
           </div>
           
-          <!-- 未連接 Spotify 提示 -->
-          <div v-if="!isSpotifyConnected && spotifyConfigured" class="col-span-6 text-center py-16 text-gray-500">
-            <font-awesome-icon :icon="['fab', 'spotify']" class="text-6xl mb-4 text-green-400" />
-            <h3 class="text-xl font-medium mb-2">連接 Spotify</h3>
-            <p class="text-sm mb-4">連接你的 Spotify 帳戶來播放音樂</p>
-            <button @click="connectSpotify" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
-              <font-awesome-icon :icon="['fab', 'spotify']" class="mr-2" />
-              連接 Spotify
+          <!-- 未連接 Jamendo 提示 -->
+          <div v-if="!isJamendoConnected && jamendoConfigured" class="col-span-6 text-center py-16 text-gray-500">
+            <font-awesome-icon icon="music" class="text-6xl mb-4 text-orange-400" />
+            <h3 class="text-xl font-medium mb-2">連接 Jamendo</h3>
+            <p class="text-sm mb-4">連接 Jamendo 來播放免費的 Creative Commons 音樂</p>
+            <button @click="connectJamendo" class="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+              <font-awesome-icon icon="music" class="mr-2" />
+              連接 Jamendo
             </button>
           </div>
 
-          <!-- Spotify 未配置提示 -->
-          <div v-else-if="!spotifyConfigured" class="col-span-6 text-center py-16 text-gray-500">
-            <font-awesome-icon :icon="['fab', 'spotify']" class="text-6xl mb-4 text-gray-400" />
-            <h3 class="text-xl font-medium mb-2">Spotify 未配置</h3>
-            <p class="text-sm mb-4">請在環境變數中設置 VITE_SPOTIFY_CLIENT_ID</p>
+          <!-- Jamendo 未配置提示 -->
+          <div v-else-if="!jamendoConfigured" class="col-span-6 text-center py-16 text-gray-500">
+            <font-awesome-icon icon="music" class="text-6xl mb-4 text-gray-400" />
+            <h3 class="text-xl font-medium mb-2">Jamendo 未配置</h3>
+            <p class="text-sm mb-4">請在環境變數中設置 VITE_JAMENDO_CLIENT_ID</p>
           </div>
           
           <!-- 無歌曲提示 -->
@@ -418,7 +418,7 @@
               {{ currentMode === 'favorites' ? '還沒有收藏' : '搜尋音樂' }}
             </h3>
             <p class="text-sm">
-              {{ currentMode === 'favorites' ? '點擊歌曲右上角的愛心來收藏音樂' : '使用上方搜尋欄或點擊曲風按鈕來尋找音樂' }}
+              {{ currentMode === 'favorites' ? '點擊歌曲右上角的愛心來收藏音樂' : '使用上方搜尋欄或點擊標籤按鈕來尋找音樂' }}
             </p>
           </div>
         </div>
@@ -429,18 +429,18 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useSpotify } from './composables/useSpotify'
+import { useJamendo } from './composables/useJamendo'
 
-// Spotify 組合式函數
-let spotifyComposable = null
+// Jamendo 組合式函數
+let jamendoComposable = null
 
 try {
-  spotifyComposable = useSpotify()
+  jamendoComposable = useJamendo()
 } catch (error) {
-  console.warn('useSpotify 初始化失敗:', error)
+  console.warn('useJamendo 初始化失敗:', error)
   // 創建空的替代對象
-  spotifyComposable = {
-    isSpotifyConnected: ref(false),
+  jamendoComposable = {
+    isJamendoConnected: ref(false),
     currentTrack: ref({}),
     isPlaying: ref(false),
     currentTime: ref(0),
@@ -448,12 +448,11 @@ try {
     volume: ref(50),
     isShuffled: ref(false),
     repeatMode: ref('off'),
-    spotifyDevices: ref([]),
     currentPlaylist: ref([]),
     currentTrackIndex: ref(0),
     autoPlayNext: ref(true),
-    connectSpotify: () => Promise.resolve(),
-    disconnectSpotify: () => {},
+    connectJamendo: () => Promise.resolve(),
+    disconnectJamendo: () => {},
     playTrack: () => Promise.resolve(),
     togglePlay: () => Promise.resolve(),
     previousTrack: () => Promise.resolve(),
@@ -463,9 +462,10 @@ try {
     toggleShuffle: () => Promise.resolve(),
     toggleRepeat: () => Promise.resolve(),
     searchTracks: () => Promise.resolve([]),
-    getRecommendations: () => Promise.resolve([]),
-    getUserPlaylists: () => Promise.resolve([]),
-    getDevices: () => Promise.resolve([]),
+    getTracksByTag: () => Promise.resolve([]),
+    getPopularTracks: () => Promise.resolve([]),
+    getLatestTracks: () => Promise.resolve([]),
+    getRandomTracks: () => Promise.resolve([]),
     setPlaylist: () => {},
     clearPlaylist: () => {},
     playNextInPlaylist: () => Promise.resolve()
@@ -473,7 +473,7 @@ try {
 }
 
 const {
-  isSpotifyConnected,
+  isJamendoConnected,
   currentTrack,
   isPlaying,
   currentTime,
@@ -484,8 +484,8 @@ const {
   currentPlaylist,
   currentTrackIndex,
   autoPlayNext,
-  connectSpotify,
-  disconnectSpotify,
+  connectJamendo,
+  disconnectJamendo,
   playTrack,
   togglePlay,
   previousTrack,
@@ -494,16 +494,18 @@ const {
   setVolume,
   toggleShuffle,
   toggleRepeat,
-  searchTracks: spotifySearch,
-  getRecommendations,
-  getUserPlaylists,
+  searchTracks: jamendoSearch,
+  getTracksByTag,
+  getPopularTracks,
+  getLatestTracks,
+  getRandomTracks,
   setPlaylist,
   clearPlaylist,
   playNextInPlaylist
-} = spotifyComposable
+} = jamendoComposable
 
 // 基本數據
-const currentMode = ref('trending')
+const currentMode = ref('popular')
 const loading = ref(false)
 const searchQuery = ref('')
 const displayedTracks = ref([])
@@ -512,36 +514,36 @@ const displayedTracks = ref([])
 const favoriteTrackIds = ref(new Set())
 const favoriteTracks = ref([])
 
-// 追蹤當前選中的曲風按鈕
-const selectedGenre = ref('')
+// 追蹤當前選中的標籤
+const selectedTag = ref('')
 
-// 檢查 Spotify 是否已配置
-const spotifyConfigured = computed(() => {
+// 檢查 Jamendo 是否已配置
+const jamendoConfigured = computed(() => {
   try {
-    return !!import.meta.env.VITE_SPOTIFY_CLIENT_ID
+    return !!import.meta.env.VITE_JAMENDO_CLIENT_ID
   } catch (error) {
     return false
   }
 })
 
-// Spotify 曲風
-const spotifyGenres = ref([
-  'pop', 'rock', 'hip-hop', 'electronic', 'jazz', 
-  'classical', 'country', 'latin', 'r&b', 'folk'
+// Jamendo 標籤（相當於曲風）
+const jamendoTags = ref([
+  'pop', 'rock', 'electronic', 'jazz', 'classical', 
+  'folk', 'metal', 'reggae', 'blues', 'ambient'
 ])
 
 // 自定義播放隊列功能
-const availableGenres = ref(['Pop', 'Rock', 'Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Country', 'Latin', 'R&B', 'Folk', 'Blues', 'Reggae', 'Funk', 'Soul', 'Indie'])
+const availableTags = ref(['pop', 'rock', 'electronic', 'jazz', 'classical', 'folk', 'metal', 'reggae', 'blues', 'ambient', 'world', 'experimental', 'instrumental', 'vocal', 'acoustic'])
 
 // 播放隊列配置
 const playlistConfig = ref([
-  { genre: 'Pop', count: 3 },
-  { genre: 'Rock', count: 2 },
-  { genre: 'Jazz', count: 1 }
+  { tag: 'pop', count: 3 },
+  { tag: 'rock', count: 2 },
+  { tag: 'jazz', count: 1 }
 ])
 
 // 下拉選單狀態
-const genreDropdownOpen = ref([false, false, false])
+const tagDropdownOpen = ref([false, false, false])
 const numberDropdownOpen = ref([false, false, false])
 
 // 自定義播放隊列狀態
@@ -562,20 +564,20 @@ const playlistProgressPercent = computed(() => {
 })
 
 // 下拉選單控制函數
-const toggleGenreDropdown = (index) => {
-  genreDropdownOpen.value = genreDropdownOpen.value.map((_, i) => i === index ? !genreDropdownOpen.value[i] : false)
+const toggleTagDropdown = (index) => {
+  tagDropdownOpen.value = tagDropdownOpen.value.map((_, i) => i === index ? !tagDropdownOpen.value[i] : false)
   numberDropdownOpen.value = [false, false, false]
 }
 
 const toggleNumberDropdown = (index) => {
   numberDropdownOpen.value = numberDropdownOpen.value.map((_, i) => i === index ? !numberDropdownOpen.value[i] : false)
-  genreDropdownOpen.value = [false, false, false]
+  tagDropdownOpen.value = [false, false, false]
 }
 
-const selectGenre = (index, genre) => {
-  playlistConfig.value[index].genre = genre
-  genreDropdownOpen.value[index] = false
-  console.log(`✅ 第${index + 1}組曲風設定為: ${genre}`)
+const selectTag = (index, tag) => {
+  playlistConfig.value[index].tag = tag
+  tagDropdownOpen.value[index] = false
+  console.log(`✅ 第${index + 1}組標籤設定為: ${tag}`)
 }
 
 const selectNumber = (index, number) => {
@@ -598,56 +600,35 @@ const startCustomPlaylist = async () => {
     // 按順序建立播放隊列
     for (let groupIndex = 0; groupIndex < playlistConfig.value.length; groupIndex++) {
       const config = playlistConfig.value[groupIndex]
-      console.log(`📀 第${groupIndex + 1}組：獲取 ${config.genre} 曲風的 ${config.count} 首歌曲...`)
+      console.log(`📀 第${groupIndex + 1}組：獲取 ${config.tag} 標籤的 ${config.count} 首歌曲...`)
       
       try {
-        // 使用更好的搜尋策略
-        const searchQueries = [
-          `genre:"${config.genre.toLowerCase()}"`,
-          `${config.genre.toLowerCase()} top tracks`,
-          `${config.genre.toLowerCase()} popular`
-        ]
+        const tagTracks = await getTracksByTag(config.tag, { limit: config.count * 3 })
         
-        let genreTracks = []
-        
-        // 嘗試不同的搜尋查詢
-        for (const query of searchQueries) {
-          try {
-            const results = await spotifySearch(query, 'track')
-            if (results && results.length > 0) {
-              genreTracks = results
-              console.log(`✅ 使用查詢 "${query}" 找到 ${results.length} 首歌曲`)
-              break
-            }
-          } catch (searchError) {
-            console.warn(`⚠️ 查詢 "${query}" 失敗:`, searchError)
-          }
-        }
-        
-        if (genreTracks.length > 0) {
+        if (tagTracks.length > 0) {
           // 隨機選擇歌曲但保持設定的數量
-          const shuffledTracks = [...genreTracks].sort(() => Math.random() - 0.5)
+          const shuffledTracks = [...tagTracks].sort(() => Math.random() - 0.5)
           const selectedTracks = shuffledTracks.slice(0, config.count)
           
           // 為每首歌添加組別和位置信息
           selectedTracks.forEach((track, trackIndex) => {
             customPlaylistQueue.value.push({
               ...track,
-              genreGroup: groupIndex,
-              genreName: config.genre,
+              tagGroup: groupIndex,
+              tagName: config.tag,
               trackIndexInGroup: trackIndex,
               totalInGroup: config.count,
               globalIndex: customPlaylistQueue.value.length
             })
           })
           
-          console.log(`✅ 第${groupIndex + 1}組 ${config.genre}: 已添加 ${selectedTracks.length} 首歌曲`)
-          console.log(`🎵 歌曲列表:`, selectedTracks.map(t => `${t.name} - ${t.artists?.[0]?.name}`))
+          console.log(`✅ 第${groupIndex + 1}組 ${config.tag}: 已添加 ${selectedTracks.length} 首歌曲`)
+          console.log(`🎵 歌曲列表:`, selectedTracks.map(t => `${t.name} - ${t.artist_name}`))
         } else {
-          console.warn(`⚠️ 第${groupIndex + 1}組 ${config.genre}: 找不到歌曲`)
+          console.warn(`⚠️ 第${groupIndex + 1}組 ${config.tag}: 找不到歌曲`)
         }
       } catch (error) {
-        console.error(`❌ 獲取第${groupIndex + 1}組 ${config.genre} 歌曲失敗:`, error)
+        console.error(`❌ 獲取第${groupIndex + 1}組 ${config.tag} 歌曲失敗:`, error)
       }
     }
     
@@ -655,15 +636,15 @@ const startCustomPlaylist = async () => {
     console.log('📊 統計:', {
       totalTracks: customPlaylistQueue.value.length,
       targetTracks: totalPlaylistTracks.value,
-      queue: customPlaylistQueue.value.map(t => `${t.genreName}-${t.name}`)
+      queue: customPlaylistQueue.value.map(t => `${t.tagName}-${t.name}`)
     })
     
     if (customPlaylistQueue.value.length > 0) {
-      // 使用新的 useSpotify 播放列表功能
-      console.log('🎵 設置播放列表到 useSpotify...')
+      // 設置播放列表
+      console.log('🎵 設置播放列表...')
       setPlaylist(customPlaylistQueue.value, 0)
       
-      // 開始播放第一首歌 - 傳入完整播放列表
+      // 開始播放第一首歌
       console.log('🎵 開始播放第一首:', customPlaylistQueue.value[0].name)
       await playTrack(customPlaylistQueue.value[0], customPlaylistQueue.value, 0)
       
@@ -694,7 +675,7 @@ const stopCustomPlaylist = () => {
   customPlaylistIndex.value = 0
   currentPlaylistStatus.value = ''
   
-  // 清除 useSpotify 中的播放列表
+  // 清除播放列表
   clearPlaylist()
   
   console.log('✅ 自定義播放隊列已停止')
@@ -707,19 +688,17 @@ const updatePlaylistStatus = () => {
     return
   }
   
-  // 從 useSpotify 獲取當前播放的歌曲索引
   const currentIndex = currentTrackIndex.value || 0
   const currentTrackInQueue = customPlaylistQueue.value[currentIndex]
   
   if (currentTrackInQueue) {
-    const groupNumber = currentTrackInQueue.genreGroup + 1
+    const groupNumber = currentTrackInQueue.tagGroup + 1
     const trackInGroup = currentTrackInQueue.trackIndexInGroup + 1
     const totalInGroup = currentTrackInQueue.totalInGroup
     const overallProgress = `${currentIndex + 1}/${customPlaylistQueue.value.length}`
     
-    currentPlaylistStatus.value = `正在播放：第${groupNumber}組 ${currentTrackInQueue.genreName} (${trackInGroup}/${totalInGroup}) | 總進度: ${overallProgress}`
+    currentPlaylistStatus.value = `正在播放：第${groupNumber}組 ${currentTrackInQueue.tagName} (${trackInGroup}/${totalInGroup}) | 總進度: ${overallProgress}`
     
-    // 更新本地索引以保持同步
     customPlaylistIndex.value = currentIndex
   }
 }
@@ -783,7 +762,7 @@ const handleTrackClick = async (track) => {
 
 // 點擊外部關閉下拉選單
 const closeAllDropdowns = () => {
-  genreDropdownOpen.value = [false, false, false]
+  tagDropdownOpen.value = [false, false, false]
   numberDropdownOpen.value = [false, false, false]
 }
 
@@ -851,7 +830,7 @@ const handleVolumeChange = (event) => {
 
 // 搜尋功能
 const searchTracks = async () => {
-  if (!searchQuery.value.trim() || !isSpotifyConnected.value) return
+  if (!searchQuery.value.trim() || !isJamendoConnected.value) return
   
   // 如果正在使用自定義播放隊列，停止它
   if (customPlaylistActive.value) {
@@ -860,9 +839,9 @@ const searchTracks = async () => {
   
   loading.value = true
   try {
-    if (spotifySearch && typeof spotifySearch === 'function') {
-      const results = await spotifySearch(searchQuery.value)
-      displayedTracks.value = results.slice(0, 30)
+    if (jamendoSearch && typeof jamendoSearch === 'function') {
+      const results = await jamendoSearch(searchQuery.value, { limit: 30 })
+      displayedTracks.value = results
     }
   } catch (error) {
     console.error('搜尋失敗:', error)
@@ -878,9 +857,9 @@ const handleSeek = (event) => {
   seek(event)
 }
 
-// 按曲風搜尋
-const searchByGenre = async (genre) => {
-  selectedGenre.value = genre
+// 按標籤搜尋
+const searchByTag = async (tag) => {
+  selectedTag.value = tag
   
   // 如果正在使用自定義播放隊列，停止它
   if (customPlaylistActive.value) {
@@ -889,12 +868,12 @@ const searchByGenre = async (genre) => {
   
   loading.value = true
   try {
-    if (spotifySearch && typeof spotifySearch === 'function') {
-      const results = await spotifySearch(`genre:${genre}`, 'track')
-      displayedTracks.value = results.slice(0, 30)
+    if (getTracksByTag && typeof getTracksByTag === 'function') {
+      const results = await getTracksByTag(tag, { limit: 30 })
+      displayedTracks.value = results
     }
   } catch (error) {
-    console.error('曲風搜尋失敗:', error)
+    console.error('標籤搜尋失敗:', error)
   } finally {
     loading.value = false
   }
@@ -914,7 +893,7 @@ const setCurrentMode = async (mode) => {
     return
   }
   
-  if (!isSpotifyConnected.value) return
+  if (!isJamendoConnected.value) return
 
   loading.value = true
   
@@ -922,24 +901,24 @@ const setCurrentMode = async (mode) => {
     let results = []
     
     switch (mode) {
-      case 'trending':
-        if (spotifySearch && typeof spotifySearch === 'function') {
-          results = await spotifySearch('top hits 2024', 'track')
+      case 'popular':
+        if (getPopularTracks && typeof getPopularTracks === 'function') {
+          results = await getPopularTracks({ limit: 30 })
         }
         break
       case 'latest':
-        if (spotifySearch && typeof spotifySearch === 'function') {
-          results = await spotifySearch('new releases', 'track')
+        if (getLatestTracks && typeof getLatestTracks === 'function') {
+          results = await getLatestTracks({ limit: 30 })
         }
         break
       case 'random':
-        if (getRecommendations && typeof getRecommendations === 'function') {
-          results = await getRecommendations()
+        if (getRandomTracks && typeof getRandomTracks === 'function') {
+          results = await getRandomTracks({ limit: 30 })
         }
         break
     }
     
-    displayedTracks.value = results.slice(0, 30)
+    displayedTracks.value = results
   } catch (error) {
     console.error('載入失敗:', error)
   } finally {
@@ -1006,12 +985,12 @@ const updateEqualizerBars = () => {
     if (intensity > 0.7) {
       const glowIntensity = (intensity - 0.7) / 0.3
       bar.style.boxShadow = `
-        0 0 ${glowIntensity * 8}px rgba(255, 0, 255, ${glowIntensity * 0.6}),
-        0 0 ${glowIntensity * 15}px rgba(0, 255, 255, ${glowIntensity * 0.3})
+        0 0 ${glowIntensity * 8}px rgba(255, 165, 0, ${glowIntensity * 0.6}),
+        0 0 ${glowIntensity * 15}px rgba(255, 69, 0, ${glowIntensity * 0.3})
       `
     } else if (intensity > 0.5) {
       const midGlow = (intensity - 0.5) / 0.2
-      bar.style.boxShadow = `0 0 ${midGlow * 4}px rgba(128, 0, 255, ${midGlow * 0.4})`
+      bar.style.boxShadow = `0 0 ${midGlow * 4}px rgba(255, 140, 0, ${midGlow * 0.4})`
     } else {
       bar.style.boxShadow = 'none'
     }
@@ -1071,10 +1050,10 @@ watch(isPlaying, (playing) => {
   }
 }, { immediate: true })
 
-// 監聽 Spotify 連接狀態
-watch(isSpotifyConnected, async (connected) => {
+// 監聽 Jamendo 連接狀態
+watch(isJamendoConnected, async (connected) => {
   if (connected && currentMode.value !== 'favorites') {
-    await setCurrentMode('trending')
+    await setCurrentMode('popular')
   }
 }, { immediate: false })
 
@@ -1088,13 +1067,13 @@ onMounted(async () => {
     }
   })
   
-  if (isSpotifyConnected.value && currentMode.value !== 'favorites') {
-    await setCurrentMode('trending')
+  if (isJamendoConnected.value && currentMode.value !== 'favorites') {
+    await setCurrentMode('popular')
   }
   
   // 確保均衡器初始化
   setTimeout(() => {
-    if (isSpotifyConnected.value) {
+    if (isJamendoConnected.value) {
       startEqualizerAnimation()
     }
   }, 500)
@@ -1120,7 +1099,7 @@ onUnmounted(() => {
 }
 
 .progress-bar {
-  background: linear-gradient(90deg, #1db954 0%, #1ed760 100%);
+  background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
   transition: width 0.3s ease;
   position: relative;
   z-index: 1;
@@ -1154,7 +1133,7 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* 音頻均衡器視覺效果 */
+/* 音頻均衡器視覺效果 - 橙色主題 */
 .audio-visualizer {
   display: flex;
   align-items: center;
@@ -1181,11 +1160,11 @@ onUnmounted(() => {
   min-height: 4px;
   background: linear-gradient(
     to top,
-    #00ffff 0%,
-    #0080ff 25%,
-    #8000ff 50%,
-    #ff00ff 75%,
-    #ff0080 100%
+    #ff6b35 0%,
+    #f7931e 25%,
+    #ffcc02 50%,
+    #fff200 75%,
+    #ffff00 100%
   );
   border-radius: 3px;
   transition: height 0.08s ease-out, box-shadow 0.1s ease, filter 0.1s ease;
@@ -1200,10 +1179,10 @@ onUnmounted(() => {
 .equalizer-bar:nth-child(5) {
   background: linear-gradient(
     to top,
-    #00ffff 0%,
-    #00c0ff 30%,
-    #0080ff 60%,
-    #4080ff 100%
+    #ff6b35 0%,
+    #ff8c42 30%,
+    #ffa449 60%,
+    #ffb74d 100%
   );
 }
 
@@ -1215,11 +1194,11 @@ onUnmounted(() => {
 .equalizer-bar:nth-child(11) {
   background: linear-gradient(
     to top,
-    #0080ff 0%,
-    #4040ff 25%,
-    #8000ff 50%,
-    #c000ff 75%,
-    #ff00c0 100%
+    #f7931e 0%,
+    #ffab00 25%,
+    #ffc107 50%,
+    #ffcc02 75%,
+    #ffd54f 100%
   );
 }
 
@@ -1230,11 +1209,11 @@ onUnmounted(() => {
 .equalizer-bar:nth-child(16) {
   background: linear-gradient(
     to top,
-    #8000ff 0%,
-    #c000ff 25%,
-    #ff00ff 50%,
-    #ff0080 75%,
-    #ff4080 100%
+    #ffcc02 0%,
+    #ffeb3b 25%,
+    #fff200 50%,
+    #ffff00 75%,
+    #f4ff81 100%
   );
 }
 
@@ -1263,9 +1242,9 @@ onUnmounted(() => {
   background-color: #e5e7eb;
 }
 
-/* 播放隊列控制區樣式 */
+/* 播放隊列控制區樣式 - 橙色主題 */
 .playlist-control-panel {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #581c87 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #b91c1c 100%);
   padding: 25px;
   border-radius: 15px;
   margin-bottom: 30px;
@@ -1314,7 +1293,7 @@ onUnmounted(() => {
 }
 
 .genre-btn-simple {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   color: white;
   padding: 12px 20px;
   border: none;
@@ -1323,13 +1302,13 @@ onUnmounted(() => {
   min-width: 120px;
   font-weight: 500;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
 }
 
 .genre-btn-simple:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
 }
 
 .number-btn-simple {
@@ -1352,7 +1331,7 @@ onUnmounted(() => {
 }
 
 .play-btn-simple {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   color: white;
   padding: 15px 30px;
   border: none;
@@ -1361,14 +1340,14 @@ onUnmounted(() => {
   font-weight: bold;
   font-size: 1.1rem;
   transition: all 0.3s ease;
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.3);
   min-width: 140px;
 }
 
 .play-btn-simple:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
   transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4);
 }
 
 .play-btn-simple:disabled {
@@ -1432,7 +1411,7 @@ onUnmounted(() => {
 }
 
 .status-badge {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   color: white;
   padding: 8px 16px;
   border-radius: 20px;
@@ -1484,7 +1463,7 @@ onUnmounted(() => {
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10b981 0%, #059669 50%, #fbbf24 100%);
+  background: linear-gradient(90deg, #f97316 0%, #ea580c 50%, #fbbf24 100%);
   border-radius: 4px;
   transition: width 0.5s ease;
 }
@@ -1506,7 +1485,7 @@ onUnmounted(() => {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #1db954;
+  background: #f97316;
   cursor: pointer;
 }
 
@@ -1514,7 +1493,7 @@ onUnmounted(() => {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #1db954;
+  background: #f97316;
   cursor: pointer;
   border: none;
 }

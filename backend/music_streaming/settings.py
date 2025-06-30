@@ -1,3 +1,4 @@
+# backend/music_streaming/settings.py (更新版本)
 """
 Django settings for music_streaming project.
 
@@ -16,8 +17,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,9 +24,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'your-dev-secret-key-change-in-production')
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '192.168.73.125', '*']
 
-
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -37,12 +34,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    
+    # 原有的應用
     'apps.music',
     'apps.users',
     'apps.playlists',
     'apps.streaming',
-    'apps.spotify',
     
+    # 新增 Jamendo 應用，移除 Spotify
+    'apps.jamendo',
 ]
 
 MIDDLEWARE = [
@@ -76,7 +76,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'music_streaming.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
@@ -86,7 +85,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -106,7 +104,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -114,21 +111,18 @@ LANGUAGE_CODE = 'zh-hant'
 TIME_ZONE = 'Asia/Taipei'
 
 USE_I18N = True
-
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
 
 # REST Framework
 REST_FRAMEWORK = {
@@ -151,19 +145,45 @@ REST_FRAMEWORK = {
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
         },
         'apps.music': {
             'handlers': ['console'],
             'level': 'DEBUG',
+        },
+        'apps.jamendo': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
         },
     },
 }
@@ -178,6 +198,7 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # 僅開發環境使用
+
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -194,9 +215,8 @@ if not DEBUG:
     AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_REGION_NAME = 'us-west-2'
 
-# Spotify API 設定
-SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
-SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+# Jamendo API 設定
+JAMENDO_CLIENT_ID = os.getenv('JAMENDO_CLIENT_ID')
 
 # 添加 CORS 允許的 headers
 CORS_ALLOW_HEADERS = [
@@ -211,3 +231,8 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'cache-control',
 ]
+
+# 創建日誌目錄
+LOGS_DIR = BASE_DIR / 'logs'
+if not LOGS_DIR.exists():
+    LOGS_DIR.mkdir(exist_ok=True)
