@@ -7,7 +7,7 @@ urlpatterns = [
     path('config/', views.get_jamendo_config, name='jamendo-config'),
     path('health/', views.health_check, name='jamendo-health'),
     
-    # API 代理端點
+    # API 代理端點（如果需要）
     path('proxy/', views.jamendo_api_proxy, name='jamendo-proxy'),
     
     # 專用端點
@@ -17,4 +17,7 @@ urlpatterns = [
     path('tracks/latest/', views.latest_tracks, name='jamendo-latest'),
     path('tracks/random/', views.random_tracks, name='jamendo-random'),
     path('tracks/<int:track_id>/', views.get_track_detail, name='jamendo-track-detail'),
+    
+    # 新增端點
+    path('tags/', views.get_available_tags, name='jamendo-tags'),
 ]

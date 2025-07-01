@@ -32,7 +32,8 @@ import {
   faStepForward,
   faRepeat,
   faRedo,
-  faFire
+  faFire,
+  faSpinner  // 🔧 新增：旋轉載入圖標
 } from '@fortawesome/free-solid-svg-icons'
 
 // 新增空心圖標
@@ -72,6 +73,7 @@ library.add(
   faRepeat,
   faRedo,
   faFire,
+  faSpinner,       // 🔧 新增
   faFacebook, 
   faTwitter,
   faSpotify
