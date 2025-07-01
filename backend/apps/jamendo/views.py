@@ -1,11 +1,13 @@
-# backend/apps/jamendo/views.py
+
 import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.conf import settings
+from django.core.cache import cache
 import json
 import logging
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,79 @@ def get_jamendo_headers():
         'Accept': 'application/json',
     }
 
+def get_cache_key(endpoint, params):
+    """生成緩存鍵"""
+    cache_string = f"{endpoint}_{json.dumps(sorted(params.items()))}"
+    return hashlib.md5(cache_string.encode()).hexdigest()
+
+def jamendo_api_request(endpoint, params, cache_timeout=3600):
+    """統一的 Jamendo API 請求函數，帶緩存"""
+    # 生成緩存鍵
+    cache_key = get_cache_key(endpoint, params)
+    
+    # 嘗試從緩存獲取
+    cached_data = cache.get(f"jamendo_{cache_key}")
+    if cached_data:
+        logger.info(f'從緩存返回數據: {endpoint}')
+        return cached_data
+    
+    # 添加必要的參數
+    final_params = {
+        'client_id': JAMENDO_CLIENT_ID,
+        'format': 'json',
+        **params
+    }
+    
+    url = f'{JAMENDO_API_BASE}/{endpoint.lstrip("/")}'
+    
+    try:
+        logger.info(f'Jamendo API 請求: {url} with params: {final_params}')
+        
+        response = requests.get(
+            url,
+            params=final_params,
+            headers=get_jamendo_headers(),
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # 數據後處理：確保所有曲目都有必要字段
+            if 'results' in data:
+                for track in data['results']:
+                    # 確保圖片字段
+                    if not track.get('image') and track.get('album_image'):
+                        track['image'] = track['album_image']
+                    
+                    # 確保時長字段
+                    if not track.get('duration'):
+                        track['duration'] = 180  # 默認3分鐘
+                    
+                    # 格式化藝人信息
+                    if not track.get('artist_name'):
+                        track['artist_name'] = 'Unknown Artist'
+                    
+                    # 格式化專輯信息
+                    if not track.get('album_name'):
+                        track['album_name'] = 'Unknown Album'
+            
+            # 緩存數據
+            cache.set(f"jamendo_{cache_key}", data, cache_timeout)
+            
+            logger.info(f'Jamendo API 響應成功: {len(data.get("results", []))} 項結果')
+            return data
+        else:
+            logger.error(f'Jamendo API 錯誤: {response.status_code} - {response.text}')
+            return None
+            
+    except requests.exceptions.Timeout:
+        logger.error('Jamendo API 請求超時')
+        return None
+    except requests.exceptions.RequestException as e:
+        logger.error(f'Jamendo API 請求異常: {str(e)}')
+        return None
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def get_jamendo_config(request):
@@ -27,276 +102,141 @@ def get_jamendo_config(request):
     return JsonResponse({
         'client_id': JAMENDO_CLIENT_ID,
         'available': bool(JAMENDO_CLIENT_ID),
-        'api_base': JAMENDO_API_BASE
+        'api_base': JAMENDO_API_BASE,
+        'status': 'configured' if JAMENDO_CLIENT_ID else 'not_configured'
     })
-
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
-def jamendo_api_proxy(request):
-    """Jamendo API 代理（可選，用於避免 CORS 問題）"""
-    try:
-        if request.method == 'GET':
-            endpoint = request.GET.get('endpoint', '')
-            params = dict(request.GET)
-            params.pop('endpoint', None)  # 移除 endpoint 參數
-        else:
-            data = json.loads(request.body) if request.body else {}
-            endpoint = data.get('endpoint', '')
-            params = data.get('params', {})
-        
-        if not endpoint:
-            return JsonResponse({'error': '缺少 endpoint 參數'}, status=400)
-        
-        if not JAMENDO_CLIENT_ID:
-            return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
-        
-        # 添加必要的參數
-        final_params = {
-            'client_id': JAMENDO_CLIENT_ID,
-            'format': 'json',
-            **params
-        }
-        
-        # 清理參數（移除空值和列表）
-        clean_params = {}
-        for key, value in final_params.items():
-            if isinstance(value, list):
-                clean_params[key] = value[0] if value else ''
-            elif value:
-                clean_params[key] = value
-        
-        url = f'{JAMENDO_API_BASE}/{endpoint.lstrip("/")}'
-        
-        logger.info(f'Jamendo API 請求: {url}')
-        logger.info(f'參數: {clean_params}')
-        
-        response = requests.get(
-            url,
-            params=clean_params,
-            headers=get_jamendo_headers(),
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            try:
-                data = response.json()
-                logger.info(f'Jamendo API 響應: 成功，返回 {len(data.get("results", []))} 項結果')
-                return JsonResponse(data)
-            except json.JSONDecodeError:
-                logger.error('Jamendo API 響應 JSON 解析失敗')
-                return JsonResponse({'error': 'API 響應格式錯誤'}, status=500)
-        else:
-            logger.error(f'Jamendo API 錯誤: {response.status_code} - {response.text}')
-            return JsonResponse({
-                'error': 'Jamendo API 錯誤',
-                'status': response.status_code,
-                'details': response.text
-            }, status=response.status_code)
-            
-    except requests.exceptions.Timeout:
-        logger.error('Jamendo API 請求超時')
-        return JsonResponse({'error': 'API 請求超時'}, status=504)
-    except requests.exceptions.RequestException as e:
-        logger.error(f'Jamendo API 請求異常: {str(e)}')
-        return JsonResponse({'error': f'API 請求失敗: {str(e)}'}, status=500)
-    except Exception as e:
-        logger.error(f'Jamendo 代理服務器錯誤: {str(e)}')
-        return JsonResponse({'error': f'服務器錯誤: {str(e)}'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def search_tracks(request):
     """搜尋音軌"""
-    try:
-        search_query = request.GET.get('q', '')
-        limit = min(int(request.GET.get('limit', 20)), 200)  # 限制最大數量
-        
-        if not search_query:
-            return JsonResponse({'error': '缺少搜尋查詢'}, status=400)
-        
-        if not JAMENDO_CLIENT_ID:
-            return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
-        
-        params = {
-            'client_id': JAMENDO_CLIENT_ID,
-            'format': 'json',
-            'search': search_query,
-            'include': 'musicinfo',
-            'audioformat': 'mp32',
-            'limit': limit
-        }
-        
-        response = requests.get(
-            f'{JAMENDO_API_BASE}/tracks',
-            params=params,
-            headers=get_jamendo_headers(),
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            return JsonResponse(data)
-        else:
-            return JsonResponse({'error': 'Jamendo API 錯誤'}, status=response.status_code)
-            
-    except ValueError:
-        return JsonResponse({'error': '無效的 limit 參數'}, status=400)
-    except Exception as e:
-        logger.error(f'搜尋音軌錯誤: {str(e)}')
-        return JsonResponse({'error': str(e)}, status=500)
+    search_query = request.GET.get('q', '')
+    limit = min(int(request.GET.get('limit', 20)), 200)
+    
+    if not search_query:
+        return JsonResponse({'error': '缺少搜尋查詢'}, status=400)
+    
+    if not JAMENDO_CLIENT_ID:
+        return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
+    
+    params = {
+        'search': search_query,
+        'include': 'musicinfo',
+        'audioformat': 'mp32',
+        'limit': limit
+    }
+    
+    data = jamendo_api_request('tracks', params)
+    
+    if data:
+        return JsonResponse(data)
+    else:
+        return JsonResponse({'error': 'Jamendo API 錯誤'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def tracks_by_tag(request):
     """按標籤獲取音軌"""
-    try:
-        tag = request.GET.get('tag', '')
-        limit = min(int(request.GET.get('limit', 20)), 200)
-        
-        if not tag:
-            return JsonResponse({'error': '缺少標籤參數'}, status=400)
-        
-        if not JAMENDO_CLIENT_ID:
-            return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
-        
-        params = {
-            'client_id': JAMENDO_CLIENT_ID,
-            'format': 'json',
-            'tags': tag,
-            'include': 'musicinfo',
-            'audioformat': 'mp32',
-            'limit': limit
-        }
-        
-        response = requests.get(
-            f'{JAMENDO_API_BASE}/tracks',
-            params=params,
-            headers=get_jamendo_headers(),
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            return JsonResponse(data)
-        else:
-            return JsonResponse({'error': 'Jamendo API 錯誤'}, status=response.status_code)
-            
-    except ValueError:
-        return JsonResponse({'error': '無效的 limit 參數'}, status=400)
-    except Exception as e:
-        logger.error(f'按標籤獲取音軌錯誤: {str(e)}')
-        return JsonResponse({'error': str(e)}, status=500)
+    tag = request.GET.get('tag', '')
+    limit = min(int(request.GET.get('limit', 20)), 200)
+    
+    if not tag:
+        return JsonResponse({'error': '缺少標籤參數'}, status=400)
+    
+    if not JAMENDO_CLIENT_ID:
+        return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
+    
+    params = {
+        'tags': tag,
+        'include': 'musicinfo',
+        'audioformat': 'mp32',
+        'limit': limit
+    }
+    
+    data = jamendo_api_request('tracks', params, cache_timeout=7200)  # 2小時緩存
+    
+    if data:
+        return JsonResponse(data)
+    else:
+        return JsonResponse({'error': 'Jamendo API 錯誤'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def popular_tracks(request):
     """獲取熱門音軌"""
-    try:
-        limit = min(int(request.GET.get('limit', 20)), 200)
-        
-        if not JAMENDO_CLIENT_ID:
-            return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
-        
-        params = {
-            'client_id': JAMENDO_CLIENT_ID,
-            'format': 'json',
-            'order': 'popularity_total',
-            'include': 'musicinfo',
-            'audioformat': 'mp32',
-            'limit': limit
-        }
-        
-        response = requests.get(
-            f'{JAMENDO_API_BASE}/tracks',
-            params=params,
-            headers=get_jamendo_headers(),
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            return JsonResponse(data)
-        else:
-            return JsonResponse({'error': 'Jamendo API 錯誤'}, status=response.status_code)
-            
-    except ValueError:
-        return JsonResponse({'error': '無效的 limit 參數'}, status=400)
-    except Exception as e:
-        logger.error(f'獲取熱門音軌錯誤: {str(e)}')
-        return JsonResponse({'error': str(e)}, status=500)
+    limit = min(int(request.GET.get('limit', 20)), 200)
+    
+    if not JAMENDO_CLIENT_ID:
+        return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
+    
+    params = {
+        'order': 'popularity_total',
+        'include': 'musicinfo',
+        'audioformat': 'mp32',
+        'limit': limit
+    }
+    
+    data = jamendo_api_request('tracks', params, cache_timeout=3600)  # 1小時緩存
+    
+    if data:
+        return JsonResponse(data)
+    else:
+        return JsonResponse({'error': 'Jamendo API 錯誤'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def latest_tracks(request):
     """獲取最新音軌"""
-    try:
-        limit = min(int(request.GET.get('limit', 20)), 200)
-        
-        if not JAMENDO_CLIENT_ID:
-            return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
-        
-        params = {
-            'client_id': JAMENDO_CLIENT_ID,
-            'format': 'json',
-            'order': 'releasedate_desc',
-            'include': 'musicinfo',
-            'audioformat': 'mp32',
-            'limit': limit
-        }
-        
-        response = requests.get(
-            f'{JAMENDO_API_BASE}/tracks',
-            params=params,
-            headers=get_jamendo_headers(),
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            return JsonResponse(data)
-        else:
-            return JsonResponse({'error': 'Jamendo API 錯誤'}, status=response.status_code)
-            
-    except ValueError:
-        return JsonResponse({'error': '無效的 limit 參數'}, status=400)
-    except Exception as e:
-        logger.error(f'獲取最新音軌錯誤: {str(e)}')
-        return JsonResponse({'error': str(e)}, status=500)
+    limit = min(int(request.GET.get('limit', 20)), 200)
+    
+    if not JAMENDO_CLIENT_ID:
+        return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
+    
+    params = {
+        'order': 'releasedate_desc',
+        'include': 'musicinfo',
+        'audioformat': 'mp32',
+        'limit': limit
+    }
+    
+    data = jamendo_api_request('tracks', params, cache_timeout=1800)  # 30分鐘緩存
+    
+    if data:
+        return JsonResponse(data)
+    else:
+        return JsonResponse({'error': 'Jamendo API 錯誤'}, status=500)
 
 @csrf_exempt
 @require_http_methods(["GET"])
 def random_tracks(request):
     """獲取隨機音軌"""
+    limit = min(int(request.GET.get('limit', 20)), 200)
+    
+    if not JAMENDO_CLIENT_ID:
+        return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
+    
+    params = {
+        'order': 'random',
+        'include': 'musicinfo',
+        'audioformat': 'mp32',
+        'limit': limit
+    }
+    
+    # 隨機音軌不使用緩存
+    url = f'{JAMENDO_API_BASE}/tracks'
+    final_params = {
+        'client_id': JAMENDO_CLIENT_ID,
+        'format': 'json',
+        **params
+    }
+    
     try:
-        limit = min(int(request.GET.get('limit', 20)), 200)
-        
-        if not JAMENDO_CLIENT_ID:
-            return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
-        
-        params = {
-            'client_id': JAMENDO_CLIENT_ID,
-            'format': 'json',
-            'order': 'random',
-            'include': 'musicinfo',
-            'audioformat': 'mp32',
-            'limit': limit
-        }
-        
-        response = requests.get(
-            f'{JAMENDO_API_BASE}/tracks',
-            params=params,
-            headers=get_jamendo_headers(),
-            timeout=30
-        )
-        
+        response = requests.get(url, params=final_params, headers=get_jamendo_headers(), timeout=30)
         if response.status_code == 200:
             data = response.json()
             return JsonResponse(data)
         else:
-            return JsonResponse({'error': 'Jamendo API 錯誤'}, status=response.status_code)
-            
-    except ValueError:
-        return JsonResponse({'error': '無效的 limit 參數'}, status=400)
+            return JsonResponse({'error': 'Jamendo API 錯誤'}, status=500)
     except Exception as e:
         logger.error(f'獲取隨機音軌錯誤: {str(e)}')
         return JsonResponse({'error': str(e)}, status=500)
@@ -305,76 +245,78 @@ def random_tracks(request):
 @require_http_methods(["GET"])
 def get_track_detail(request, track_id):
     """獲取音軌詳情"""
-    try:
-        if not JAMENDO_CLIENT_ID:
-            return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
-        
-        params = {
-            'client_id': JAMENDO_CLIENT_ID,
-            'format': 'json',
-            'id': track_id,
-            'include': 'musicinfo+stats+lyrics',
-            'audioformat': 'mp32'
-        }
-        
-        response = requests.get(
-            f'{JAMENDO_API_BASE}/tracks',
-            params=params,
-            headers=get_jamendo_headers(),
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('results'):
-                return JsonResponse(data['results'][0])
-            else:
-                return JsonResponse({'error': '找不到音軌'}, status=404)
-        else:
-            return JsonResponse({'error': 'Jamendo API 錯誤'}, status=response.status_code)
-            
-    except Exception as e:
-        logger.error(f'獲取音軌詳情錯誤: {str(e)}')
-        return JsonResponse({'error': str(e)}, status=500)
+    if not JAMENDO_CLIENT_ID:
+        return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
+    
+    params = {
+        'id': track_id,
+        'include': 'musicinfo+stats+lyrics',
+        'audioformat': 'mp32'
+    }
+    
+    data = jamendo_api_request('tracks', params, cache_timeout=86400)  # 24小時緩存
+    
+    if data and data.get('results'):
+        return JsonResponse(data['results'][0])
+    else:
+        return JsonResponse({'error': '找不到音軌'}, status=404)
 
+@csrf_exempt  
+@require_http_methods(["GET"])
+def get_available_tags(request):
+    """獲取可用的音樂標籤 - 使用 Jamendo 官方推薦曲風"""
+    if not JAMENDO_CLIENT_ID:
+        return JsonResponse({'error': 'Jamendo 未配置'}, status=500)
+    
+    # Jamendo API 官方推薦的曲風標籤
+    # 來源：https://developer.jamendo.com/v3.0/tracks
+    jamendo_featured_genres = [
+        'pop',        # 流行音樂 - 最受歡迎的主流音樂
+        'rock',       # 搖滾音樂 - 經典搖滾風格
+        'electronic', # 電子音樂 - 電子合成器音樂
+        'jazz',       # 爵士音樂 - 爵士樂風格
+        'classical',  # 古典音樂 - 古典樂曲
+        'hiphop',     # 嘻哈音樂 - 說唱和節拍音樂
+        'metal',      # 金屬音樂 - 重金屬音樂
+        'world',      # 世界音樂 - 各國民族音樂
+        'soundtrack', # 配樂音樂 - 電影配樂等
+        'lounge'      # 休閒音樂 - 輕鬆氛圍音樂
+    ]
+    
+    return JsonResponse({
+        'results': jamendo_featured_genres,
+        'count': len(jamendo_featured_genres),
+        'source': 'jamendo_official_featured_genres',
+        'description': 'Jamendo API 官方推薦的特色曲風標籤'
+    })
 @csrf_exempt
 @require_http_methods(["GET"])
 def health_check(request):
     """健康檢查端點"""
+    if not JAMENDO_CLIENT_ID:
+        return JsonResponse({
+            'status': 'error',
+            'jamendo_api': 'not_configured',
+            'error': 'JAMENDO_CLIENT_ID 未設置'
+        }, status=500)
+    
+    # 測試 Jamendo API 連接
     try:
-        if not JAMENDO_CLIENT_ID:
-            return JsonResponse({
-                'status': 'error',
-                'jamendo_api': 'not_configured',
-                'error': 'JAMENDO_CLIENT_ID 未設置'
-            }, status=500)
+        data = jamendo_api_request('tracks', {'limit': 1}, cache_timeout=60)
         
-        # 測試 Jamendo API 連接
-        params = {
-            'client_id': JAMENDO_CLIENT_ID,
-            'format': 'json',
-            'limit': 1
-        }
-        
-        response = requests.get(
-            f'{JAMENDO_API_BASE}/tracks',
-            params=params,
-            headers=get_jamendo_headers(),
-            timeout=10
-        )
-        
-        if response.status_code == 200:
+        if data:
             return JsonResponse({
                 'status': 'healthy',
                 'jamendo_api': 'connected',
                 'client_id_configured': True,
-                'api_base': JAMENDO_API_BASE
+                'api_base': JAMENDO_API_BASE,
+                'cache_enabled': True
             })
         else:
             return JsonResponse({
                 'status': 'error',
                 'jamendo_api': 'failed',
-                'error': f'HTTP {response.status_code}',
+                'error': 'API 請求失敗',
                 'client_id_configured': True
             }, status=500)
             
@@ -385,3 +327,6 @@ def health_check(request):
             'error': str(e),
             'client_id_configured': bool(JAMENDO_CLIENT_ID)
         }, status=500)
+    
+def jamendo_api_proxy(request):
+    return JsonResponse({'message': '這是 Jamendo Proxy API 的回應'})

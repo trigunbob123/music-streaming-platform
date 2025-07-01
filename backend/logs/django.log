@@ -1,0 +1,129 @@
+INFO 2025-07-01 10:47:02,852 autoreload 27160 20284 Watching for file changes with StatReloader
+INFO 2025-07-01 10:52:12,248 basehttp 27160 19844 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 10:52:12,260 basehttp 27160 19844 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 10:52:12,269 basehttp 27160 19844 "GET /api/jamendo/tags/ HTTP/1.1" 200 185
+INFO 2025-07-01 10:52:12,274 views 27160 19844 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'order': 'popularity_total', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 10:52:13,698 views 27160 19844 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 10:52:13,702 basehttp 27160 19844 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121492
+INFO 2025-07-01 10:52:20,866 views 27160 19844 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'rock', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 10:52:22,045 views 27160 19844 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 10:52:22,048 basehttp 27160 19844 "GET /api/jamendo/tracks/tag/?tag=rock&limit=30 HTTP/1.1" 200 127514
+INFO 2025-07-01 10:56:05,825 views 27160 25952 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'reggae', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 10:56:07,092 views 27160 25952 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 10:56:07,096 basehttp 27160 25952 "GET /api/jamendo/tracks/tag/?tag=reggae&limit=30 HTTP/1.1" 200 121426
+INFO 2025-07-01 10:56:15,753 views 27160 25952 從緩存返回數據: tracks
+INFO 2025-07-01 10:56:15,756 basehttp 27160 25952 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121492
+INFO 2025-07-01 10:56:18,061 basehttp 27160 25952 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 10:56:18,076 basehttp 27160 25952 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 10:56:18,085 basehttp 27160 25952 "GET /api/jamendo/tags/ HTTP/1.1" 200 185
+INFO 2025-07-01 10:56:18,093 views 27160 25952 從緩存返回數據: tracks
+INFO 2025-07-01 10:56:18,099 basehttp 27160 25952 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121492
+INFO 2025-07-01 10:56:28,227 views 27160 25952 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'order': 'releasedate_desc', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 10:56:29,464 views 27160 25952 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 10:56:29,468 basehttp 27160 25952 "GET /api/jamendo/tracks/latest/?limit=30 HTTP/1.1" 200 147571
+INFO 2025-07-01 10:56:34,474 views 27160 25952 從緩存返回數據: tracks
+INFO 2025-07-01 10:56:34,477 basehttp 27160 25952 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121492
+INFO 2025-07-01 10:56:38,208 views 27160 25952 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'electronic', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 10:56:39,392 views 27160 25952 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 10:56:39,395 basehttp 27160 25952 "GET /api/jamendo/tracks/tag/?tag=electronic&limit=30 HTTP/1.1" 200 119675
+INFO 2025-07-01 10:57:53,735 views 27160 9488 從緩存返回數據: tracks
+INFO 2025-07-01 10:57:53,739 basehttp 27160 9488 "GET /api/jamendo/tracks/tag/?tag=electronic&limit=30 HTTP/1.1" 200 119675
+INFO 2025-07-01 10:57:55,083 views 27160 9488 從緩存返回數據: tracks
+INFO 2025-07-01 10:57:55,086 basehttp 27160 9488 "GET /api/jamendo/tracks/tag/?tag=electronic&limit=30 HTTP/1.1" 200 119675
+INFO 2025-07-01 10:57:57,004 views 27160 9488 從緩存返回數據: tracks
+INFO 2025-07-01 10:57:57,007 basehttp 27160 9488 "GET /api/jamendo/tracks/tag/?tag=reggae&limit=30 HTTP/1.1" 200 121426
+INFO 2025-07-01 11:15:44,500 basehttp 27160 10812 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:15:44,520 basehttp 27160 10812 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:15:44,532 basehttp 27160 10812 "GET /api/jamendo/tags/ HTTP/1.1" 200 185
+INFO 2025-07-01 11:15:44,542 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:15:44,544 basehttp 27160 10812 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121492
+INFO 2025-07-01 11:15:53,318 basehttp 27160 10812 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:15:53,334 basehttp 27160 10812 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:15:53,341 basehttp 27160 10812 "GET /api/jamendo/tags/ HTTP/1.1" 200 185
+INFO 2025-07-01 11:15:53,350 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:15:53,353 basehttp 27160 10812 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121492
+INFO 2025-07-01 11:15:54,965 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:15:54,968 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=rock&limit=30 HTTP/1.1" 200 127514
+INFO 2025-07-01 11:15:56,189 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:15:56,192 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=electronic&limit=30 HTTP/1.1" 200 119675
+INFO 2025-07-01 11:15:58,925 views 27160 10812 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'jazz', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:16:00,371 views 27160 10812 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:16:00,374 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=jazz&limit=30 HTTP/1.1" 200 136596
+INFO 2025-07-01 11:16:06,517 views 27160 10812 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'blues', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:16:07,774 views 27160 10812 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:16:07,778 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=blues&limit=30 HTTP/1.1" 200 128891
+INFO 2025-07-01 11:16:09,104 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:16:09,108 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=rock&limit=30 HTTP/1.1" 200 127514
+INFO 2025-07-01 11:16:10,175 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:16:10,179 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=electronic&limit=30 HTTP/1.1" 200 119675
+INFO 2025-07-01 11:16:11,670 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:16:11,673 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=reggae&limit=30 HTTP/1.1" 200 121426
+INFO 2025-07-01 11:16:11,925 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:16:11,929 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=reggae&limit=30 HTTP/1.1" 200 121426
+INFO 2025-07-01 11:16:14,915 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:16:14,919 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=jazz&limit=30 HTTP/1.1" 200 136596
+INFO 2025-07-01 11:16:17,625 views 27160 10812 從緩存返回數據: tracks
+INFO 2025-07-01 11:16:17,628 basehttp 27160 10812 "GET /api/jamendo/tracks/tag/?tag=rock&limit=30 HTTP/1.1" 200 127514
+INFO 2025-07-01 11:24:21,517 autoreload 27160 20284 C:\Users\澄佑\Desktop\music-Frontend\music-streaming-platform\backend\apps\jamendo\views.py changed, reloading.
+INFO 2025-07-01 11:24:22,168 autoreload 24156 24260 Watching for file changes with StatReloader
+INFO 2025-07-01 11:27:18,058 autoreload 24156 24260 C:\Users\澄佑\Desktop\music-Frontend\music-streaming-platform\backend\apps\jamendo\views.py changed, reloading.
+INFO 2025-07-01 11:27:18,699 autoreload 25952 11324 Watching for file changes with StatReloader
+INFO 2025-07-01 11:27:23,205 basehttp 25952 27424 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:27:23,220 basehttp 25952 27424 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:27:23,229 basehttp 25952 27424 "GET /api/jamendo/tags/ HTTP/1.1" 200 271
+INFO 2025-07-01 11:27:23,238 views 25952 27424 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'order': 'popularity_total', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:27:24,245 views 25952 27424 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:27:24,248 basehttp 25952 27424 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121498
+INFO 2025-07-01 11:27:25,666 views 25952 27424 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'pop', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:27:26,587 views 25952 27424 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:27:26,591 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=pop&limit=30 HTTP/1.1" 200 128620
+INFO 2025-07-01 11:27:28,733 views 25952 27424 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'electronic', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:27:29,826 views 25952 27424 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:27:29,830 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=electronic&limit=30 HTTP/1.1" 200 119603
+INFO 2025-07-01 11:27:31,238 views 25952 27424 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'soundtrack', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:27:32,184 views 25952 27424 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:27:32,187 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=soundtrack&limit=30 HTTP/1.1" 200 129173
+INFO 2025-07-01 11:27:35,882 views 25952 27424 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'lounge', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:27:36,883 views 25952 27424 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:27:36,887 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=lounge&limit=30 HTTP/1.1" 200 120619
+INFO 2025-07-01 11:27:39,884 views 25952 27424 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'classical', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:27:40,858 views 25952 27424 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:27:40,862 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=classical&limit=30 HTTP/1.1" 200 120556
+INFO 2025-07-01 11:28:06,984 basehttp 25952 27424 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:28:06,991 basehttp 25952 27424 "GET /api/jamendo/tags/ HTTP/1.1" 200 271
+INFO 2025-07-01 11:28:07,009 views 25952 27424 從緩存返回數據: tracks
+INFO 2025-07-01 11:28:07,013 basehttp 25952 27424 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121498
+INFO 2025-07-01 11:28:08,491 basehttp 25952 27424 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:28:08,499 basehttp 25952 27424 "GET /api/jamendo/tags/ HTTP/1.1" 200 271
+INFO 2025-07-01 11:28:08,512 views 25952 27424 從緩存返回數據: tracks
+INFO 2025-07-01 11:28:08,515 basehttp 25952 27424 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121498
+INFO 2025-07-01 11:28:09,961 basehttp 25952 27424 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:28:09,969 basehttp 25952 27424 "GET /api/jamendo/tags/ HTTP/1.1" 200 271
+INFO 2025-07-01 11:28:09,985 views 25952 27424 從緩存返回數據: tracks
+INFO 2025-07-01 11:28:09,990 basehttp 25952 27424 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121498
+INFO 2025-07-01 11:28:27,730 basehttp 25952 27424 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:28:27,740 basehttp 25952 27424 "GET /api/jamendo/tags/ HTTP/1.1" 200 271
+INFO 2025-07-01 11:28:27,782 views 25952 27424 從緩存返回數據: tracks
+INFO 2025-07-01 11:28:27,785 basehttp 25952 27424 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121498
+INFO 2025-07-01 11:31:44,502 views 25952 27424 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'rock', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:31:45,759 views 25952 27424 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:31:45,761 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=rock&limit=30 HTTP/1.1" 200 123970
+INFO 2025-07-01 11:34:23,777 views 25952 27424 從緩存返回數據: tracks
+INFO 2025-07-01 11:34:23,780 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=electronic&limit=30 HTTP/1.1" 200 119603
+INFO 2025-07-01 11:34:29,006 views 25952 27424 Jamendo API 請求: https://api.jamendo.com/v3.0/tracks with params: {'client_id': '93957ee4', 'format': 'json', 'tags': 'world', 'include': 'musicinfo', 'audioformat': 'mp32', 'limit': 30}
+INFO 2025-07-01 11:34:30,260 views 25952 27424 Jamendo API 響應成功: 30 項結果
+INFO 2025-07-01 11:34:30,264 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=world&limit=30 HTTP/1.1" 200 124986
+INFO 2025-07-01 11:34:30,415 views 25952 27424 從緩存返回數據: tracks
+INFO 2025-07-01 11:34:30,417 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=electronic&limit=30 HTTP/1.1" 200 119603
+INFO 2025-07-01 11:34:34,347 views 25952 27424 從緩存返回數據: tracks
+INFO 2025-07-01 11:34:34,350 basehttp 25952 27424 "GET /api/jamendo/tracks/tag/?tag=rock&limit=30 HTTP/1.1" 200 123970
+INFO 2025-07-01 11:42:41,718 basehttp 25952 9712 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:42:41,739 basehttp 25952 9712 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:42:41,751 basehttp 25952 9712 "GET /api/jamendo/tags/ HTTP/1.1" 200 271
+INFO 2025-07-01 11:42:41,764 views 25952 9712 從緩存返回數據: tracks
+INFO 2025-07-01 11:42:41,766 basehttp 25952 9712 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121498
+INFO 2025-07-01 11:43:34,325 basehttp 25952 9712 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:43:34,357 basehttp 25952 9712 "GET /api/jamendo/config/ HTTP/1.1" 200 112
+INFO 2025-07-01 11:43:34,370 basehttp 25952 9712 "GET /api/jamendo/tags/ HTTP/1.1" 200 271
+INFO 2025-07-01 11:43:34,386 views 25952 9712 從緩存返回數據: tracks
+INFO 2025-07-01 11:43:34,389 basehttp 25952 9712 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121498

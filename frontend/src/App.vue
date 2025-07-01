@@ -3,11 +3,11 @@
     <!-- 左側邊欄 -->
     <div class="w-64 sidebar text-white p-4">
       <div class="flex items-center justify-between mb-8">
-        <img 
-          src="@/assets/images/12.png" 
-          alt="DDM360" 
-          class="h-auto w-20 "
-        />
+        <!-- 使用文字 logo 替代圖片 -->
+        <div class="flex items-center">
+          <img src="@/assets/images/12.png" alt="DDM360" class="h-auto w-25" />
+
+        </div>
         <div class="flex space-x-2">
           <button v-if="!isJamendoConnected && jamendoConfigured" @click="connectJamendo" 
                   class="text-orange-400 hover:text-orange-300 text-sm">
@@ -27,25 +27,25 @@
 
       <nav class="space-y-4 mb-8">
         <button @click="setCurrentMode('random')" 
-                class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700"
+                class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors"
                 :class="{ 'bg-gray-700': currentMode === 'random' }">
           <font-awesome-icon icon="random" class="mr-3" />
           隨機播放
         </button>
         <button @click="setCurrentMode('latest')" 
-                class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700"
+                class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors"
                 :class="{ 'bg-gray-700': currentMode === 'latest' }">
           <font-awesome-icon icon="music" class="mr-3" />
           最新音樂
         </button>
         <button @click="setCurrentMode('popular')" 
-                class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700"
+                class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors"
                 :class="{ 'bg-gray-700': currentMode === 'popular' }">
           <font-awesome-icon icon="fire" class="mr-3" />
           熱門歌曲
         </button>
         <button @click="setCurrentMode('favorites')" 
-                class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700"
+                class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors"
                 :class="{ 'bg-gray-700': currentMode === 'favorites' }">
           <font-awesome-icon icon="heart" class="mr-3" />
           我的收藏
@@ -59,6 +59,19 @@
             <font-awesome-icon icon="music" class="mr-2" />
             <span>Jamendo 已連接</span>
           </div>
+        </div>
+      </div>
+
+      <!-- 錯誤顯示 -->
+      <div v-if="lastError" class="mt-4">
+        <div class="bg-red-900 p-3 rounded-lg">
+          <div class="flex items-center text-red-300 text-sm">
+            <font-awesome-icon icon="exclamation-triangle" class="mr-2" />
+            <span>{{ lastError }}</span>
+          </div>
+          <button @click="clearError" class="text-red-200 text-xs mt-1 underline">
+            清除錯誤
+          </button>
         </div>
       </div>
     </div>
@@ -75,7 +88,8 @@
               <img v-if="currentTrack.image" 
                    :src="currentTrack.image" 
                    :alt="currentTrack.name" 
-                   class="w-full h-full object-cover" />
+                   class="w-full h-full object-cover"
+                   @error="handleImageError" />
               <div v-else class="w-full h-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                 <font-awesome-icon icon="music" class="text-white text-2xl" />
               </div>
@@ -91,30 +105,37 @@
               </p>
             </div>
           </div>
+          <div v-else class="flex items-center min-w-0 flex-1">
+            <div class="text-gray-400 text-sm">
+              <font-awesome-icon icon="music" class="mr-2" />
+              選擇一首歌曲開始播放
+            </div>
+          </div>
 
           <!-- 右側：播放控制和音量 -->
           <div class="flex items-center space-x-4 flex-shrink-0">
-            <!-- 音頻均衡器視覺效果 -->
+            <!-- 改進的音頻均衡器視覺效果 -->
             <div class="audio-visualizer">
               <div class="equalizer-bars">
                 <div 
                   v-for="i in 16" 
                   :key="i" 
-                  class="equalizer-bar" 
-                  :class="{ 'playing': isPlaying }"
+                  class="equalizer-bar"
+                  :ref="el => { if (el) equalizerBars[i-1] = el }"
+                  :data-freq-group="getFrequencyGroup(i-1)"
                 ></div>
               </div>
             </div>
             
             <!-- 播放控制按鈕 -->
             <div class="play-controls-container">
-              <button @click="handlePreviousTrack" class="control-button">
+              <button @click="handlePreviousTrack" class="control-button" :disabled="!currentTrack.name">
                 <font-awesome-icon icon="step-backward" class="text-lg" />
               </button>
-              <button @click="handleTogglePlay" class="control-button">
+              <button @click="handleTogglePlay" class="control-button" :disabled="!currentTrack.name">
                 <font-awesome-icon :icon="isPlaying ? 'pause' : 'play'" class="text-lg" />
               </button>
-              <button @click="handleNextTrack" class="control-button">
+              <button @click="handleNextTrack" class="control-button" :disabled="!currentTrack.name">
                 <font-awesome-icon icon="step-forward" class="text-lg" />
               </button>
             </div>
@@ -163,7 +184,7 @@
       <!-- 搜尋欄 -->
       <div class="p-2 pb-0" v-if="isJamendoConnected">
         <div class="relative inline-block w-full">
-          <input v-model="searchQuery" @input="searchTracks" 
+          <input v-model="searchQuery" @input="debouncedSearch" 
                  placeholder="🔎搜尋歌曲、藝人或專輯..." 
                  class="w-full py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
         </div>
@@ -171,151 +192,22 @@
 
       <!-- 主要內容 -->
       <div class="p-6">
-        <!-- 自定義播放隊列控制區 -->
-        <div class="playlist-control-panel" v-if="isJamendoConnected">
-          <div class="playlist-header">
-            <h3 class="text-white text-lg font-bold mb-4">🎵 自定義播放隊列</h3>
-            <p class="text-gray-300 text-sm mb-4">設定三組標籤和數量，系統將按順序播放</p>
-          </div>
-          
-          <div class="playlist-controls">
-            <!-- 第一組 -->
-            <div class="control-group">
-              <span class="group-label">第1組</span>
-              <div class="dropdown-wrapper">
-                <button class="genre-btn-simple" @click="toggleTagDropdown(0)">
-                  {{ playlistConfig[0].tag }} ▼
-                </button>
-                <div v-if="tagDropdownOpen[0]" class="dropdown-simple">
-                  <div v-for="tag in availableTags" :key="tag" 
-                       @click="selectTag(0, tag)" class="dropdown-item">
-                    {{ tag }}
-                  </div>
-                </div>
-              </div>
-              <div class="dropdown-wrapper">
-                <button class="number-btn-simple" @click="toggleNumberDropdown(0)">
-                  {{ playlistConfig[0].count }} 首 ▼
-                </button>
-                <div v-if="numberDropdownOpen[0]" class="dropdown-simple">
-                  <div v-for="num in [1,2,3,4,5,6,7,8,9,10]" :key="num" 
-                       @click="selectNumber(0, num)" class="dropdown-item">
-                    {{ num }} 首
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <span class="plus-sign">→</span>
-
-            <!-- 第二組 -->
-            <div class="control-group">
-              <span class="group-label">第2組</span>
-              <div class="dropdown-wrapper">
-                <button class="genre-btn-simple" @click="toggleTagDropdown(1)">
-                  {{ playlistConfig[1].tag }} ▼
-                </button>
-                <div v-if="tagDropdownOpen[1]" class="dropdown-simple">
-                  <div v-for="tag in availableTags" :key="tag" 
-                       @click="selectTag(1, tag)" class="dropdown-item">
-                    {{ tag }}
-                  </div>
-                </div>
-              </div>
-              <div class="dropdown-wrapper">
-                <button class="number-btn-simple" @click="toggleNumberDropdown(1)">
-                  {{ playlistConfig[1].count }} 首 ▼
-                </button>
-                <div v-if="numberDropdownOpen[1]" class="dropdown-simple">
-                  <div v-for="num in [1,2,3,4,5,6,7,8,9,10]" :key="num" 
-                       @click="selectNumber(1, num)" class="dropdown-item">
-                    {{ num }} 首
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <span class="plus-sign">→</span>
-
-            <!-- 第三組 -->
-            <div class="control-group">
-              <span class="group-label">第3組</span>
-              <div class="dropdown-wrapper">
-                <button class="genre-btn-simple" @click="toggleTagDropdown(2)">
-                  {{ playlistConfig[2].tag }} ▼
-                </button>
-                <div v-if="tagDropdownOpen[2]" class="dropdown-simple">
-                  <div v-for="tag in availableTags" :key="tag" 
-                       @click="selectTag(2, tag)" class="dropdown-item">
-                    {{ tag }}
-                  </div>
-                </div>
-              </div>
-              <div class="dropdown-wrapper">
-                <button class="number-btn-simple" @click="toggleNumberDropdown(2)">
-                  {{ playlistConfig[2].count }} 首 ▼
-                </button>
-                <div v-if="numberDropdownOpen[2]" class="dropdown-simple">
-                  <div v-for="num in [1,2,3,4,5,6,7,8,9,10]" :key="num" 
-                       @click="selectNumber(2, num)" class="dropdown-item">
-                    {{ num }} 首
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 播放按鈕 -->
-            <button class="play-btn-simple" @click="startCustomPlaylist" :disabled="loading">
-              <span v-if="loading">
-                <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                建立中...
-              </span>
-              <span v-else>
-                ▶ 開始播放
-              </span>
-            </button>
-          </div>
-          
-          <!-- 播放狀態顯示 -->
-          <div v-if="customPlaylistActive" class="playlist-status">
-            <div class="status-header">
-              <span class="status-badge">🎵 正在播放自定義隊列</span>
-              <button @click="stopCustomPlaylist" class="stop-btn">
-                ⏹ 停止
-              </button>
-            </div>
-            <div class="status-details">
-              {{ currentPlaylistStatus }}
-            </div>
-            <!-- 播放進度條 -->
-            <div class="playlist-progress">
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" 
-                     :style="{ width: playlistProgressPercent + '%' }"></div>
-              </div>
-              <span class="progress-text">
-                {{ (currentTrackIndex || 0) + 1 }} / {{ totalPlaylistTracks }} 首
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 標籤按鈕 -->
+        <!-- Jamendo 曲風按鈕 - 使用官方推薦的10個曲風 -->
         <div v-if="isJamendoConnected && currentMode !== 'favorites'">
           <div class="grid grid-cols-5 gap-4 mb-4">
             <button v-for="tag in jamendoTags.slice(0, 5)" :key="tag" 
                     @click="searchByTag(tag)"
-                    class="genre-btn py-3 px-6 rounded-lg text-white hover:bg-orange-400 transition-all duration-300 transform hover:scale-105"
-                    :class="selectedTag === tag ? 'bg-orange-500' : 'bg-orange-600'">
-              {{ tag.toUpperCase() }}
+                    class="genre-btn-new py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
+                    :class="getGenreButtonClass(tag)">
+              {{ getGenreDisplayName(tag) }}
             </button>
           </div>
           <div class="grid grid-cols-5 gap-4 mb-8">
             <button v-for="tag in jamendoTags.slice(5, 10)" :key="tag" 
                     @click="searchByTag(tag)"
-                    class="genre-btn py-3 px-6 rounded-lg text-white hover:bg-orange-400 transition-all duration-300 transform hover:scale-105"
-                    :class="selectedTag === tag ? 'bg-orange-500' : 'bg-orange-600'">
-              {{ tag.toUpperCase() }}
+                    class="genre-btn-new py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
+                    :class="getGenreButtonClass(tag)">
+              {{ getGenreDisplayName(tag) }}
             </button>
           </div>
         </div>
@@ -356,7 +248,8 @@
               <img v-if="track.image" 
                    :src="track.image" 
                    :alt="track.name" 
-                   class="w-full h-full object-cover" />
+                   class="w-full h-full object-cover"
+                   @error="handleImageError" />
               <div v-else class="w-full h-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
                 <font-awesome-icon icon="music" class="text-white text-2xl" />
               </div>
@@ -441,6 +334,7 @@ try {
   // 創建空的替代對象
   jamendoComposable = {
     isJamendoConnected: ref(false),
+    jamendoConfigured: ref(false),
     currentTrack: ref({}),
     isPlaying: ref(false),
     currentTime: ref(0),
@@ -451,6 +345,7 @@ try {
     currentPlaylist: ref([]),
     currentTrackIndex: ref(0),
     autoPlayNext: ref(true),
+    lastError: ref(''),
     connectJamendo: () => Promise.resolve(),
     disconnectJamendo: () => {},
     playTrack: () => Promise.resolve(),
@@ -468,12 +363,14 @@ try {
     getRandomTracks: () => Promise.resolve([]),
     setPlaylist: () => {},
     clearPlaylist: () => {},
-    playNextInPlaylist: () => Promise.resolve()
+    playNextInPlaylist: () => Promise.resolve(),
+    getAvailableTags: () => Promise.resolve([])
   }
 }
 
 const {
   isJamendoConnected,
+  jamendoConfigured,
   currentTrack,
   isPlaying,
   currentTime,
@@ -484,6 +381,7 @@ const {
   currentPlaylist,
   currentTrackIndex,
   autoPlayNext,
+  lastError,
   connectJamendo,
   disconnectJamendo,
   playTrack,
@@ -501,7 +399,8 @@ const {
   getRandomTracks,
   setPlaylist,
   clearPlaylist,
-  playNextInPlaylist
+  playNextInPlaylist,
+  getAvailableTags
 } = jamendoComposable
 
 // 基本數據
@@ -517,203 +416,237 @@ const favoriteTracks = ref([])
 // 追蹤當前選中的標籤
 const selectedTag = ref('')
 
-// 檢查 Jamendo 是否已配置
-const jamendoConfigured = computed(() => {
-  try {
-    return !!import.meta.env.VITE_JAMENDO_CLIENT_ID
-  } catch (error) {
-    return false
-  }
-})
-
-// Jamendo 標籤（相當於曲風）
+// 🎵 Jamendo API 官方推薦的10個曲風（替換原有的 Spotify 曲風）
 const jamendoTags = ref([
-  'pop', 'rock', 'electronic', 'jazz', 'classical', 
-  'folk', 'metal', 'reggae', 'blues', 'ambient'
+  'pop',        // 流行音樂
+  'rock',       // 搖滾音樂  
+  'electronic', // 電子音樂
+  'jazz',       // 爵士音樂
+  'classical',  // 古典音樂
+  'hiphop',     // 嘻哈音樂
+  'metal',      // 金屬音樂
+  'world',      // 世界音樂
+  'soundtrack', // 配樂音樂
+  'lounge'      // 休閒音樂
 ])
 
-// 自定義播放隊列功能
-const availableTags = ref(['pop', 'rock', 'electronic', 'jazz', 'classical', 'folk', 'metal', 'reggae', 'blues', 'ambient', 'world', 'experimental', 'instrumental', 'vocal', 'acoustic'])
-
-// 播放隊列配置
-const playlistConfig = ref([
-  { tag: 'pop', count: 3 },
-  { tag: 'rock', count: 2 },
-  { tag: 'jazz', count: 1 }
-])
-
-// 下拉選單狀態
-const tagDropdownOpen = ref([false, false, false])
-const numberDropdownOpen = ref([false, false, false])
-
-// 自定義播放隊列狀態
-const customPlaylistActive = ref(false)
-const customPlaylistQueue = ref([])
-const customPlaylistIndex = ref(0)
-const currentPlaylistStatus = ref('')
-
-// 播放隊列進度
-const totalPlaylistTracks = computed(() => {
-  return playlistConfig.value.reduce((total, config) => total + config.count, 0)
-})
-
-const playlistProgressPercent = computed(() => {
-  if (!customPlaylistActive.value || totalPlaylistTracks.value === 0) return 0
-  const currentIndex = currentTrackIndex.value || 0
-  return ((currentIndex + 1) / customPlaylistQueue.value.length) * 100
-})
-
-// 下拉選單控制函數
-const toggleTagDropdown = (index) => {
-  tagDropdownOpen.value = tagDropdownOpen.value.map((_, i) => i === index ? !tagDropdownOpen.value[i] : false)
-  numberDropdownOpen.value = [false, false, false]
+// 🎵 曲風名稱中英對照（顯示用）
+const genreNameMap = {
+  'pop': 'POP',
+  'rock': 'ROCK', 
+  'electronic': 'ELECTRONIC',
+  'jazz': 'JAZZ',
+  'classical': 'CLASSICAL',
+  'hiphop': 'HIP HOP',
+  'metal': 'METAL',
+  'world': 'WORLD',
+  'soundtrack': 'SOUNDTRACK',
+  'lounge': 'LOUNGE'
 }
 
-const toggleNumberDropdown = (index) => {
-  numberDropdownOpen.value = numberDropdownOpen.value.map((_, i) => i === index ? !numberDropdownOpen.value[i] : false)
-  tagDropdownOpen.value = [false, false, false]
+// 音頻均衡器相關
+const equalizerBars = ref([])
+const audioFrequencyData = ref(Array(16).fill(0.2))
+
+// 搜尋防抖
+let searchTimeout = null
+const debouncedSearch = () => {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    searchTracks()
+  }, 500)
 }
 
-const selectTag = (index, tag) => {
-  playlistConfig.value[index].tag = tag
-  tagDropdownOpen.value[index] = false
-  console.log(`✅ 第${index + 1}組標籤設定為: ${tag}`)
+// 錯誤處理
+const clearError = () => {
+  lastError.value = ''
 }
 
-const selectNumber = (index, number) => {
-  playlistConfig.value[index].count = number
-  numberDropdownOpen.value[index] = false
-  console.log(`✅ 第${index + 1}組數量設定為: ${number} 首`)
+// 圖片錯誤處理
+const handleImageError = (event) => {
+  event.target.style.display = 'none'
 }
 
-// 自定義播放隊列建立
-const startCustomPlaylist = async () => {
-  try {
-    loading.value = true
-    customPlaylistActive.value = false
-    customPlaylistQueue.value = []
-    customPlaylistIndex.value = 0
-    
-    console.log('🎵 開始建立自定義播放隊列...')
-    console.log('📋 播放配置:', playlistConfig.value)
-    
-    // 按順序建立播放隊列
-    for (let groupIndex = 0; groupIndex < playlistConfig.value.length; groupIndex++) {
-      const config = playlistConfig.value[groupIndex]
-      console.log(`📀 第${groupIndex + 1}組：獲取 ${config.tag} 標籤的 ${config.count} 首歌曲...`)
-      
-      try {
-        const tagTracks = await getTracksByTag(config.tag, { limit: config.count * 3 })
-        
-        if (tagTracks.length > 0) {
-          // 隨機選擇歌曲但保持設定的數量
-          const shuffledTracks = [...tagTracks].sort(() => Math.random() - 0.5)
-          const selectedTracks = shuffledTracks.slice(0, config.count)
-          
-          // 為每首歌添加組別和位置信息
-          selectedTracks.forEach((track, trackIndex) => {
-            customPlaylistQueue.value.push({
-              ...track,
-              tagGroup: groupIndex,
-              tagName: config.tag,
-              trackIndexInGroup: trackIndex,
-              totalInGroup: config.count,
-              globalIndex: customPlaylistQueue.value.length
-            })
-          })
-          
-          console.log(`✅ 第${groupIndex + 1}組 ${config.tag}: 已添加 ${selectedTracks.length} 首歌曲`)
-          console.log(`🎵 歌曲列表:`, selectedTracks.map(t => `${t.name} - ${t.artist_name}`))
-        } else {
-          console.warn(`⚠️ 第${groupIndex + 1}組 ${config.tag}: 找不到歌曲`)
-        }
-      } catch (error) {
-        console.error(`❌ 獲取第${groupIndex + 1}組 ${config.tag} 歌曲失敗:`, error)
-      }
-    }
-    
-    console.log('🎵 播放隊列建立完成')
-    console.log('📊 統計:', {
-      totalTracks: customPlaylistQueue.value.length,
-      targetTracks: totalPlaylistTracks.value,
-      queue: customPlaylistQueue.value.map(t => `${t.tagName}-${t.name}`)
-    })
-    
-    if (customPlaylistQueue.value.length > 0) {
-      // 設置播放列表
-      console.log('🎵 設置播放列表...')
-      setPlaylist(customPlaylistQueue.value, 0)
-      
-      // 開始播放第一首歌
-      console.log('🎵 開始播放第一首:', customPlaylistQueue.value[0].name)
-      await playTrack(customPlaylistQueue.value[0], customPlaylistQueue.value, 0)
-      
-      // 啟用自定義播放隊列狀態
-      customPlaylistActive.value = true
-      updatePlaylistStatus()
-      
-      console.log('✅ 自定義播放隊列啟動成功')
-    } else {
-      alert('無法建立播放隊列，請檢查網路連接或重試')
-      customPlaylistActive.value = false
-    }
-    
-  } catch (error) {
-    console.error('❌ 建立播放隊列失敗:', error)
-    alert('建立播放隊列失敗: ' + error.message)
-    customPlaylistActive.value = false
-  } finally {
-    loading.value = false
+// 🎵 新增：曲風按鈕樣式控制
+const getGenreButtonClass = (tag) => {
+  if (selectedTag.value === tag) {
+    // 選中狀態：粉紅色背景，白色文字
+    return 'bg-pink-500 text-white font-semibold shadow-lg hover:bg-pink-600'
+  } else {
+    // 未選中狀態：白色背景，黑色文字
+    return 'bg-white text-black font-medium shadow-md border border-gray-200 hover:bg-gray-50'
   }
 }
 
-// 停止自定義播放隊列
-const stopCustomPlaylist = () => {
-  console.log('🛑 停止自定義播放隊列')
-  customPlaylistActive.value = false
-  customPlaylistQueue.value = []
-  customPlaylistIndex.value = 0
-  currentPlaylistStatus.value = ''
-  
-  // 清除播放列表
-  clearPlaylist()
-  
-  console.log('✅ 自定義播放隊列已停止')
+// 🎵 新增：獲取曲風顯示名稱
+const getGenreDisplayName = (tag) => {
+  return genreNameMap[tag] || tag.toUpperCase()
 }
 
-// 更新播放狀態顯示
-const updatePlaylistStatus = () => {
-  if (!customPlaylistActive.value || customPlaylistQueue.value.length === 0) {
-    currentPlaylistStatus.value = ''
+// 🎵 新增：獲取頻率組（低音、中音、高音）
+const getFrequencyGroup = (index) => {
+  if (index < 5) return 'bass'      // 低音: 0-4
+  if (index < 11) return 'mid'      // 中音: 5-10
+  return 'high'                     // 高音: 11-15
+}
+
+// 🎵 改進的音頻均衡器動態效果
+const simulateRealisticAudioSpectrum = () => {
+  if (!isPlaying.value) {
+    // 音樂停止時緩慢降低所有條形
+    audioFrequencyData.value = audioFrequencyData.value.map(value => 
+      Math.max(0.1, value * 0.95)
+    )
+    updateEqualizerBars()
     return
   }
   
-  const currentIndex = currentTrackIndex.value || 0
-  const currentTrackInQueue = customPlaylistQueue.value[currentIndex]
+  const currentTimeMs = Date.now()
+  const beatPeriod = 600 // 主要節拍週期
+  const beatPhase = (currentTimeMs % beatPeriod) / beatPeriod
   
-  if (currentTrackInQueue) {
-    const groupNumber = currentTrackInQueue.tagGroup + 1
-    const trackInGroup = currentTrackInQueue.trackIndexInGroup + 1
-    const totalInGroup = currentTrackInQueue.totalInGroup
-    const overallProgress = `${currentIndex + 1}/${customPlaylistQueue.value.length}`
+  // 計算主要節拍強度
+  const beatIntensity = Math.max(0, Math.sin(beatPhase * Math.PI * 2))
+  
+  // 為不同頻率組創建不同的模式
+  audioFrequencyData.value = audioFrequencyData.value.map((currentValue, index) => {
+    const freqGroup = getFrequencyGroup(index)
+    let newValue = currentValue
     
-    currentPlaylistStatus.value = `正在播放：第${groupNumber}組 ${currentTrackInQueue.tagName} (${trackInGroup}/${totalInGroup}) | 總進度: ${overallProgress}`
+    if (freqGroup === 'bass') {
+      // 低音：跟隨主要節拍，變化較慢但幅度大
+      const bassPattern = beatIntensity * (0.8 + Math.sin(currentTimeMs * 0.003 + index) * 0.2)
+      const bassRandom = 0.7 + Math.random() * 0.3
+      newValue = bassPattern * bassRandom
+      
+      // 在節拍點有額外的衝擊
+      if (beatPhase < 0.1) {
+        newValue = Math.min(1.0, newValue * 1.5)
+      }
+      
+    } else if (freqGroup === 'mid') {
+      // 中音：較複雜的模式，有時跟隨人聲和樂器
+      const midBase = Math.sin(currentTimeMs * 0.005 + index * 0.8) * 0.4 + 0.5
+      const midRhythm = Math.sin(beatPhase * Math.PI * 3) * 0.3 // 更快的節拍
+      const midRandom = 0.6 + Math.random() * 0.4
+      newValue = (midBase + midRhythm) * midRandom
+      
+    } else { // high
+      // 高音：快速變化，模擬高帽、鈸等
+      const highFreq = Math.sin(currentTimeMs * 0.008 + index * 1.5) * 0.5 + 0.4
+      const highSpikes = Math.random() > 0.8 ? Math.random() * 0.6 : 0 // 隨機尖峰
+      const highRandom = 0.5 + Math.random() * 0.5
+      newValue = (highFreq + highSpikes) * highRandom
+      
+      // 在某些節拍點有鈸的效果
+      if (beatPhase > 0.7 && beatPhase < 0.9 && Math.random() > 0.7) {
+        newValue = Math.min(1.0, newValue * 2)
+      }
+    }
     
-    customPlaylistIndex.value = currentIndex
-  }
+    // 平滑過渡
+    const smoothing = freqGroup === 'bass' ? 0.8 : freqGroup === 'mid' ? 0.7 : 0.6
+    return currentValue * smoothing + newValue * (1 - smoothing)
+  })
+  
+  updateEqualizerBars()
 }
 
-// 監聽播放隊列變化來更新狀態
-watch([currentTrackIndex, currentTrack], () => {
-  if (customPlaylistActive.value) {
-    updatePlaylistStatus()
+// 🎵 更新均衡器條形顯示
+const updateEqualizerBars = () => {
+  equalizerBars.value.forEach((bar, index) => {
+    if (!bar) return
+    
+    const intensity = audioFrequencyData.value[index]
+    const height = Math.max(8, Math.min(90, intensity * 100))
+    const freqGroup = getFrequencyGroup(index)
+    
+    // 設置高度
+    bar.style.height = `${height}%`
+    
+    // 根據頻率組和強度設置顏色
+    if (intensity > 0.8) {
+      // 高強度：亮色
+      if (freqGroup === 'bass') {
+        bar.style.background = 'linear-gradient(to top, #ff4500, #ff6347, #ffa500)'
+      } else if (freqGroup === 'mid') {
+        bar.style.background = 'linear-gradient(to top, #ffa500, #ffff00, #adff2f)'
+      } else {
+        bar.style.background = 'linear-gradient(to top, #ffff00, #ffffff, #87ceeb)'
+      }
+      bar.style.boxShadow = `0 0 ${intensity * 10}px rgba(255, 165, 0, ${intensity * 0.8})`
+    } else if (intensity > 0.5) {
+      // 中等強度：標準色
+      if (freqGroup === 'bass') {
+        bar.style.background = 'linear-gradient(to top, #ff6b35, #ff8c42, #ffa449)'
+      } else if (freqGroup === 'mid') {
+        bar.style.background = 'linear-gradient(to top, #f7931e, #ffab00, #ffc107)'
+      } else {
+        bar.style.background = 'linear-gradient(to top, #ffcc02, #ffeb3b, #fff200)'
+      }
+      bar.style.boxShadow = `0 0 ${intensity * 6}px rgba(255, 140, 0, ${intensity * 0.5})`
+    } else {
+      // 低強度：暗色
+      if (freqGroup === 'bass') {
+        bar.style.background = 'linear-gradient(to top, #8b4513, #cd853f)'
+      } else if (freqGroup === 'mid') {
+        bar.style.background = 'linear-gradient(to top, #daa520, #f0e68c)'
+      } else {
+        bar.style.background = 'linear-gradient(to top, #f0e68c, #ffffe0)'
+      }
+      bar.style.boxShadow = 'none'
+    }
+    
+    // 添加頻率組特定的效果
+    if (freqGroup === 'bass') {
+      bar.style.filter = `saturate(${1 + intensity * 0.5})`
+    } else if (freqGroup === 'high') {
+      bar.style.filter = `brightness(${1 + intensity * 0.3}) contrast(${1 + intensity * 0.2})`
+    } else {
+      bar.style.filter = `hue-rotate(${intensity * 20}deg)`
+    }
+  })
+}
+
+// 🎵 均衡器動畫控制
+let equalizerInterval = null
+const startEqualizerAnimation = () => {
+  if (equalizerInterval) clearInterval(equalizerInterval)
+  equalizerInterval = setInterval(simulateRealisticAudioSpectrum, 80) // 12.5 FPS
+}
+
+const stopEqualizerAnimation = () => {
+  if (equalizerInterval) {
+    clearInterval(equalizerInterval)
+    equalizerInterval = null
   }
-})
+  
+  // 緩慢淡出效果
+  const fadeOut = () => {
+    audioFrequencyData.value = audioFrequencyData.value.map(value => value * 0.9)
+    updateEqualizerBars()
+    
+    if (Math.max(...audioFrequencyData.value) > 0.05) {
+      setTimeout(fadeOut, 50)
+    } else {
+      // 設置為最小值
+      audioFrequencyData.value.fill(0.1)
+      equalizerBars.value.forEach(bar => {
+        if (bar) {
+          bar.style.height = '8%'
+          bar.style.boxShadow = 'none'
+          bar.style.filter = 'none'
+          bar.style.background = 'linear-gradient(to top, #666, #999)'
+        }
+      })
+    }
+  }
+  fadeOut()
+}
 
 // 播放控制函數
 const handlePreviousTrack = () => {
   console.log('⏮️ 點擊上一首按鈕')
-  
   if (previousTrack && typeof previousTrack === 'function') {
     previousTrack()
   } else {
@@ -723,7 +656,6 @@ const handlePreviousTrack = () => {
 
 const handleNextTrack = () => {
   console.log('⏭️ 點擊下一首按鈕') 
-  
   if (nextTrack && typeof nextTrack === 'function') {
     nextTrack()
   } else {
@@ -744,26 +676,11 @@ const handleTogglePlay = () => {
 const handleTrackClick = async (track) => {
   try {
     console.log('🎵 點擊歌曲:', track.name)
-    
-    // 如果正在使用自定義播放隊列，停止它
-    if (customPlaylistActive.value) {
-      console.log('🛑 停止自定義播放隊列，播放單首歌曲')
-      stopCustomPlaylist()
-    }
-    
-    // 播放單首歌曲（不設置播放列表）
     await playTrack(track)
-    
   } catch (error) {
     console.error('❌ 播放歌曲失敗:', error)
     alert('播放失敗: ' + error.message)
   }
-}
-
-// 點擊外部關閉下拉選單
-const closeAllDropdowns = () => {
-  tagDropdownOpen.value = [false, false, false]
-  numberDropdownOpen.value = [false, false, false]
 }
 
 // 收藏功能方法
@@ -832,12 +749,9 @@ const handleVolumeChange = (event) => {
 const searchTracks = async () => {
   if (!searchQuery.value.trim() || !isJamendoConnected.value) return
   
-  // 如果正在使用自定義播放隊列，停止它
-  if (customPlaylistActive.value) {
-    stopCustomPlaylist()
-  }
-  
   loading.value = true
+  selectedTag.value = '' // 清除選中的標籤
+  
   try {
     if (jamendoSearch && typeof jamendoSearch === 'function') {
       const results = await jamendoSearch(searchQuery.value, { limit: 30 })
@@ -853,24 +767,20 @@ const searchTracks = async () => {
 // 進度條點擊處理
 const handleSeek = (event) => {
   if (!duration.value || !seek || typeof seek !== 'function') return
-  
   seek(event)
 }
 
 // 按標籤搜尋
 const searchByTag = async (tag) => {
   selectedTag.value = tag
-  
-  // 如果正在使用自定義播放隊列，停止它
-  if (customPlaylistActive.value) {
-    stopCustomPlaylist()
-  }
+  searchQuery.value = '' // 清除搜尋框
   
   loading.value = true
   try {
     if (getTracksByTag && typeof getTracksByTag === 'function') {
       const results = await getTracksByTag(tag, { limit: 30 })
       displayedTracks.value = results
+      console.log(`🎵 搜尋 ${getGenreDisplayName(tag)} 曲風，找到 ${results.length} 首歌曲`)
     }
   } catch (error) {
     console.error('標籤搜尋失敗:', error)
@@ -882,11 +792,8 @@ const searchByTag = async (tag) => {
 // 設置模式
 const setCurrentMode = async (mode) => {
   currentMode.value = mode
-  
-  // 如果切換到其他模式，停止自定義播放隊列
-  if (customPlaylistActive.value) {
-    stopCustomPlaylist()
-  }
+  selectedTag.value = '' // 清除選中的標籤
+  searchQuery.value = '' // 清除搜尋框
   
   if (mode === 'favorites') {
     displayedTracks.value = [...favoriteTracks.value]
@@ -934,114 +841,27 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-// 音頻均衡器動態效果
-const audioFrequencyData = ref(Array(16).fill(0.2))
-const bassFrequencies = [0, 1, 2, 3, 4]
-const midFrequencies = [5, 6, 7, 8, 9, 10]
-const highFrequencies = [11, 12, 13, 14, 15]
-
-const simulateAudioSpectrum = () => {
-  if (!isPlaying.value) return
-  
-  const currentTimeMs = Date.now()
-  const beatPeriod = 600
-  const beatPhase = (currentTimeMs % beatPeriod) / beatPeriod
-  const beatIntensity = Math.max(0, Math.sin(beatPhase * Math.PI * 2) * 1.2 + 0.3)
-  
-  audioFrequencyData.value = audioFrequencyData.value.map((currentValue, index) => {
-    let newValue = currentValue
-    
-    if (bassFrequencies.includes(index)) {
-      const bassRandom = Math.random() * 0.5 + 0.3
-      const bassPattern = beatIntensity * (0.7 + Math.sin(currentTimeMs * 0.003 + index) * 0.3)
-      newValue = bassRandom * bassPattern
-    } else if (midFrequencies.includes(index)) {
-      const midRandom = Math.random() * 0.6 + 0.2
-      const midPattern = Math.sin(currentTimeMs * 0.005 + index * 0.5) * 0.3 + 0.5
-      const rhythmBoost = Math.sin(beatPhase * Math.PI * 4) * 0.2
-      newValue = midRandom * midPattern + rhythmBoost
-    } else if (highFrequencies.includes(index)) {
-      const highRandom = Math.random() * 0.8 + 0.15
-      const highPattern = Math.sin(currentTimeMs * 0.008 + index * 1.2) * 0.4 + 0.3
-      const sparkle = Math.random() > 0.7 ? Math.random() * 0.4 : 0
-      newValue = highRandom * highPattern + sparkle
-    }
-    
-    const smoothing = 0.7
-    return currentValue * smoothing + newValue * (1 - smoothing)
-  })
-  
-  updateEqualizerBars()
-}
-
-const updateEqualizerBars = () => {
-  const bars = document.querySelectorAll('.equalizer-bar')
-  bars.forEach((bar, index) => {
-    const intensity = audioFrequencyData.value[index]
-    const height = Math.max(10, Math.min(100, intensity * 120))
-    
-    bar.style.height = `${height}%`
-    
-    if (intensity > 0.7) {
-      const glowIntensity = (intensity - 0.7) / 0.3
-      bar.style.boxShadow = `
-        0 0 ${glowIntensity * 8}px rgba(255, 165, 0, ${glowIntensity * 0.6}),
-        0 0 ${glowIntensity * 15}px rgba(255, 69, 0, ${glowIntensity * 0.3})
-      `
-    } else if (intensity > 0.5) {
-      const midGlow = (intensity - 0.5) / 0.2
-      bar.style.boxShadow = `0 0 ${midGlow * 4}px rgba(255, 140, 0, ${midGlow * 0.4})`
-    } else {
-      bar.style.boxShadow = 'none'
-    }
-    
-    if (bassFrequencies.includes(index)) {
-      bar.style.filter = `hue-rotate(${intensity * 30}deg) saturate(${1 + intensity * 0.5})`
-    } else if (highFrequencies.includes(index)) {
-      bar.style.filter = `hue-rotate(${-intensity * 20}deg) saturate(${1 + intensity * 0.8})`
-    } else {
-      bar.style.filter = `saturate(${1 + intensity * 0.6})`
-    }
-  })
-}
-
-let equalizerInterval = null
-const startEqualizerAnimation = () => {
-  if (equalizerInterval) clearInterval(equalizerInterval)
-  equalizerInterval = setInterval(simulateAudioSpectrum, 80)
-}
-
-const stopEqualizerAnimation = () => {
-  if (equalizerInterval) {
-    clearInterval(equalizerInterval)
-    equalizerInterval = null
-  }
-  
-  const fadeOut = () => {
-    audioFrequencyData.value = audioFrequencyData.value.map(value => value * 0.9)
-    updateEqualizerBars()
-    
-    if (Math.max(...audioFrequencyData.value) > 0.05) {
-      setTimeout(fadeOut, 50)
-    } else {
-      audioFrequencyData.value.fill(0.15)
-      const bars = document.querySelectorAll('.equalizer-bar')
-      bars.forEach(bar => {
-        bar.style.height = '15%'
-        bar.style.boxShadow = 'none'
-        bar.style.filter = 'none'
-      })
-    }
-  }
-  fadeOut()
-}
-
 // 計算屬性
 const progressPercentage = computed(() => {
   return duration.value ? (currentTime.value / duration.value) * 100 : 0
 })
 
-// 監聽播放狀態變化
+// 載入可用標籤
+const loadAvailableTags = async () => {
+  try {
+    if (getAvailableTags && typeof getAvailableTags === 'function') {
+      const tags = await getAvailableTags()
+      if (tags.length > 0) {
+        jamendoTags.value = tags
+        console.log('✅ 已載入 Jamendo 官方曲風標籤:', tags)
+      }
+    }
+  } catch (error) {
+    console.warn('載入標籤失敗，使用默認標籤:', error)
+  }
+}
+
+// 監聽播放狀態變化 - 控制均衡器
 watch(isPlaying, (playing) => {
   if (playing) {
     startEqualizerAnimation()
@@ -1052,8 +872,11 @@ watch(isPlaying, (playing) => {
 
 // 監聽 Jamendo 連接狀態
 watch(isJamendoConnected, async (connected) => {
-  if (connected && currentMode.value !== 'favorites') {
-    await setCurrentMode('popular')
+  if (connected) {
+    await loadAvailableTags()
+    if (currentMode.value !== 'favorites') {
+      await setCurrentMode('popular')
+    }
   }
 }, { immediate: false })
 
@@ -1061,19 +884,14 @@ watch(isJamendoConnected, async (connected) => {
 onMounted(async () => {
   loadFavoritesFromStorage()
   
-  document.addEventListener('click', (event) => {
-    if (!event.target.closest('.dropdown-wrapper')) {
-      closeAllDropdowns()
-    }
-  })
-  
+  // 等待 Jamendo 連接後再載入數據
   if (isJamendoConnected.value && currentMode.value !== 'favorites') {
     await setCurrentMode('popular')
   }
   
-  // 確保均衡器初始化
+  // 初始化均衡器
   setTimeout(() => {
-    if (isJamendoConnected.value) {
+    if (isPlaying.value) {
       startEqualizerAnimation()
     }
   }, 500)
@@ -1081,11 +899,13 @@ onMounted(async () => {
 
 // 清理資源
 onUnmounted(() => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  
   if (equalizerInterval) {
     clearInterval(equalizerInterval)
   }
-  
-  document.removeEventListener('click', closeAllDropdowns)
 })
 </script>
 
@@ -1123,6 +943,11 @@ onUnmounted(() => {
   transition: all 0.2s ease;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-circle {
   border-radius: 50%;
   width: 3rem;
@@ -1133,7 +958,7 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* 音頻均衡器視覺效果 - 橙色主題 */
+/* 🎵 改進的音頻均衡器視覺效果 */
 .audio-visualizer {
   display: flex;
   align-items: center;
@@ -1158,63 +983,26 @@ onUnmounted(() => {
 .equalizer-bar {
   width: 10px;
   min-height: 4px;
-  background: linear-gradient(
-    to top,
-    #ff6b35 0%,
-    #f7931e 25%,
-    #ffcc02 50%,
-    #fff200 75%,
-    #ffff00 100%
-  );
+  height: 8%;
+  background: linear-gradient(to top, #666, #999);
   border-radius: 3px;
-  transition: height 0.08s ease-out, box-shadow 0.1s ease, filter 0.1s ease;
-  animation: none;
+  transition: height 0.08s ease-out, background 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
   position: relative;
 }
 
-.equalizer-bar:nth-child(1),
-.equalizer-bar:nth-child(2),
-.equalizer-bar:nth-child(3),
-.equalizer-bar:nth-child(4),
-.equalizer-bar:nth-child(5) {
-  background: linear-gradient(
-    to top,
-    #ff6b35 0%,
-    #ff8c42 30%,
-    #ffa449 60%,
-    #ffb74d 100%
-  );
+/* 低音條（0-4）*/
+.equalizer-bar[data-freq-group="bass"] {
+  background: linear-gradient(to top, #ff6b35 0%, #ff8c42 50%, #ffa449 100%);
 }
 
-.equalizer-bar:nth-child(6),
-.equalizer-bar:nth-child(7),
-.equalizer-bar:nth-child(8),
-.equalizer-bar:nth-child(9),
-.equalizer-bar:nth-child(10),
-.equalizer-bar:nth-child(11) {
-  background: linear-gradient(
-    to top,
-    #f7931e 0%,
-    #ffab00 25%,
-    #ffc107 50%,
-    #ffcc02 75%,
-    #ffd54f 100%
-  );
+/* 中音條（5-10）*/
+.equalizer-bar[data-freq-group="mid"] {
+  background: linear-gradient(to top, #f7931e 0%, #ffab00 50%, #ffc107 100%);
 }
 
-.equalizer-bar:nth-child(12),
-.equalizer-bar:nth-child(13),
-.equalizer-bar:nth-child(14),
-.equalizer-bar:nth-child(15),
-.equalizer-bar:nth-child(16) {
-  background: linear-gradient(
-    to top,
-    #ffcc02 0%,
-    #ffeb3b 25%,
-    #fff200 50%,
-    #ffff00 75%,
-    #f4ff81 100%
-  );
+/* 高音條（11-15）*/
+.equalizer-bar[data-freq-group="high"] {
+  background: linear-gradient(to top, #ffcc02 0%, #ffeb3b 50%, #fff200 100%);
 }
 
 .play-controls-container {
@@ -1238,241 +1026,13 @@ onUnmounted(() => {
   transition: all 0.2s ease;
 }
 
-.control-button:hover {
+.control-button:hover:not(:disabled) {
   background-color: #e5e7eb;
 }
 
-/* 播放隊列控制區樣式 - 橙色主題 */
-.playlist-control-panel {
-  background: linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #b91c1c 100%);
-  padding: 25px;
-  border-radius: 15px;
-  margin-bottom: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.playlist-header h3 {
-  color: white;
-  font-size: 1.25rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
-}
-
-.playlist-header p {
-  color: #e5e7eb;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-}
-
-.playlist-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.group-label {
-  color: #fbbf24;
-  font-size: 0.75rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.dropdown-wrapper {
-  position: relative;
-}
-
-.genre-btn-simple {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: white;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  min-width: 120px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
-}
-
-.genre-btn-simple:hover {
-  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
-}
-
-.number-btn-simple {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: white;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  min-width: 80px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-}
-
-.number-btn-simple:hover {
-  background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-}
-
-.play-btn-simple {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: white;
-  padding: 15px 30px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 1.1rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.3);
-  min-width: 140px;
-}
-
-.play-btn-simple:hover:not(:disabled) {
-  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4);
-}
-
-.play-btn-simple:disabled {
-  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+.control-button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: 0 2px 10px rgba(107, 114, 128, 0.2);
-}
-
-.dropdown-simple {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background-color: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  min-width: 140px;
-  max-height: 250px;
-  overflow-y: auto;
-  margin-top: 5px;
-}
-
-.dropdown-item {
-  padding: 12px 16px;
-  cursor: pointer;
-  color: #374151;
-  border-bottom: 1px solid #f3f4f6;
-  transition: all 0.2s ease;
-  font-weight: 500;
-}
-
-.dropdown-item:hover {
-  background-color: #f8fafc;
-  color: #1f2937;
-}
-
-.dropdown-item:last-child {
-  border-bottom: none;
-}
-
-.plus-sign {
-  color: #fbbf24;
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.playlist-status {
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 12px;
-  padding: 20px;
-  backdrop-filter: blur(10px);
-}
-
-.status-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.status-badge {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.stop-btn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.stop-btn:hover {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  transform: translateY(-1px);
-}
-
-.status-details {
-  color: #e5e7eb;
-  font-size: 0.875rem;
-  text-align: center;
-  margin-bottom: 15px;
-  line-height: 1.5;
-}
-
-.playlist-progress {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.progress-bar-bg {
-  flex: 1;
-  height: 8px;
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #f97316 0%, #ea580c 50%, #fbbf24 100%);
-  border-radius: 4px;
-  transition: width 0.5s ease;
-}
-
-.progress-text {
-  color: #e5e7eb;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
 }
 
 .volume-slider {
@@ -1498,53 +1058,52 @@ onUnmounted(() => {
   border: none;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-.animate-pulse {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.genre-btn {
+/* 🎵 新的曲風按鈕樣式 */
+.genre-btn-new {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: none;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.genre-btn:hover {
+.genre-btn-new:hover {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px) scale(1.05);
 }
 
+/* 未選中狀態：白色背景，黑色文字 */
+.genre-btn-new.bg-white {
+  background-color: white;
+  color: black;
+}
+
+.genre-btn-new.bg-white:hover {
+  background-color: #f9fafb;
+}
+
+/* 選中狀態：粉紅色背景，白色文字 */
+.genre-btn-new.bg-pink-500 {
+  background-color: #ec4899;
+  color: white;
+}
+
+.genre-btn-new.bg-pink-500:hover {
+  background-color: #db2777;
+}
+
 .heart-outline {
   color: #a2a3a3 !important;
-  -webkit-text-stroke: 0 #758094;
-  text-stroke: 0 #164392;
 }
 
 .heart-outline:hover {
-  -webkit-text-stroke: 1.5px #2661d6;
-  text-stroke: 1.5px #079125;
+  color: #6b7280 !important;
 }
 
 .heart-filled {
   color: #ec4899 !important;
-  -webkit-text-stroke: 0;
-  text-stroke: 0;
   filter: drop-shadow(0 0 4px rgba(236, 72, 153, 0.3));
 }
 
@@ -1557,16 +1116,6 @@ onUnmounted(() => {
 @media (max-width: 1024px) {
   .grid-cols-6 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  
-  .playlist-controls {
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .control-group {
-    flex-direction: row;
-    gap: 10px;
   }
 }
 
@@ -1584,27 +1133,12 @@ onUnmounted(() => {
   }
   
   .play-controls-container {
-    gap: 20px;
+    gap: 10px;
   }
   
   .control-button {
     width: 40px;
     height: 40px;
-  }
-  
-  .playlist-controls {
-    gap: 10px;
-  }
-  
-  .genre-btn-simple,
-  .number-btn-simple {
-    min-width: 100px;
-    padding: 10px 12px;
-  }
-  
-  .play-btn-simple {
-    min-width: 120px;
-    padding: 12px 20px;
   }
 }
 </style>
