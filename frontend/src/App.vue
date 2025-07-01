@@ -3,23 +3,18 @@
     <!-- 左側邊欄 -->
     <div class="w-64 sidebar text-white p-4">
       <div class="flex items-center justify-between mb-8">
-        <!-- 使用文字 logo 替代圖片 -->
+        <!-- 只顯示 logo，移除連接狀態 -->
         <div class="flex items-center">
           <img src="@/assets/images/12.png" alt="DDM360" class="h-auto w-25" />
-
         </div>
+        <!-- 連接按鈕區域 -->
         <div class="flex space-x-2">
           <button v-if="!isJamendoConnected && jamendoConfigured" @click="connectJamendo" 
                   class="text-orange-400 hover:text-orange-300 text-sm">
             <font-awesome-icon icon="music" class="mr-1" />
             連接 Jamendo
           </button>
-          <button v-else-if="isJamendoConnected" @click="disconnectJamendo" 
-                  class="text-orange-400 hover:text-orange-300 text-sm">
-            <font-awesome-icon icon="music" class="mr-1" />
-            已連接
-          </button>
-          <span v-else class="text-gray-400 text-xs">
+          <span v-else-if="!jamendoConfigured" class="text-gray-400 text-xs">
             Jamendo 未配置
           </span>
         </div>
@@ -51,16 +46,6 @@
           我的收藏
         </button>
       </nav>
-
-      <!-- Jamendo 播放器狀態 -->
-      <div v-if="isJamendoConnected" class="mt-auto">
-        <div class="bg-orange-900 p-3 rounded-lg">
-          <div class="flex items-center text-orange-300 text-sm">
-            <font-awesome-icon icon="music" class="mr-2" />
-            <span>Jamendo 已連接</span>
-          </div>
-        </div>
-      </div>
 
       <!-- 錯誤顯示 -->
       <div v-if="lastError" class="mt-4">
@@ -114,8 +99,26 @@
 
           <!-- 右側：播放控制和音量 -->
           <div class="flex items-center space-x-4 flex-shrink-0">
+            <!-- 🆕 修改：只在自定義播放清單模式下顯示狀態 -->
+            <div v-if="customPlaylistStatus.isActive && currentMode === 'custom'" class="custom-playlist-status bg-blue-900/50 px-4 py-2 rounded-lg">
+              <div class="text-xs text-blue-200 mb-1">混和曲風播放清單</div>
+              <div class="text-sm font-medium text-white">
+                第{{ customPlaylistStatus.currentGroup }}組 {{ customPlaylistStatus.currentGenre }} 
+                ({{ customPlaylistStatus.currentInGroup }}/{{ customPlaylistStatus.totalInGroup }})
+              </div>
+              <div class="text-xs text-blue-300 mt-1">
+                總進度: {{ customPlaylistStatus.overallProgress }}/{{ customPlaylistStatus.totalTracks }}
+              </div>
+            </div>
+            
+            <!-- 載入指示器 -->
+            <div v-if="isLoadingTrack" class="flex items-center text-orange-400">
+              <font-awesome-icon icon="spinner" class="animate-spin mr-2" />
+              <span class="text-sm">載入中...</span>
+            </div>
+            
             <!-- 改進的音頻均衡器視覺效果 -->
-            <div class="audio-visualizer">
+            <div class="audio-visualizer" v-show="!isLoadingTrack">
               <div class="equalizer-bars">
                 <div 
                   v-for="i in 16" 
@@ -129,19 +132,20 @@
             
             <!-- 播放控制按鈕 -->
             <div class="play-controls-container">
-              <button @click="handlePreviousTrack" class="control-button" :disabled="!currentTrack.name">
+              <button @click="handlePreviousTrack" class="control-button" :disabled="!currentTrack.name || isLoadingTrack">
                 <font-awesome-icon icon="step-backward" class="text-lg" />
               </button>
               <button @click="handleTogglePlay" class="control-button" :disabled="!currentTrack.name">
-                <font-awesome-icon :icon="isPlaying ? 'pause' : 'play'" class="text-lg" />
+                <font-awesome-icon v-if="isLoadingTrack" icon="spinner" class="text-lg animate-spin" />
+                <font-awesome-icon v-else :icon="isPlaying ? 'pause' : 'play'" class="text-lg" />
               </button>
-              <button @click="handleNextTrack" class="control-button" :disabled="!currentTrack.name">
+              <button @click="handleNextTrack" class="control-button" :disabled="!currentTrack.name || isLoadingTrack">
                 <font-awesome-icon icon="step-forward" class="text-lg" />
               </button>
             </div>
             
             <!-- 進度條區域 -->
-            <div class="flex items-center space-x-2" style="min-width: 300px;">
+            <div class="flex items-center space-x-2" style="min-width: 170px;">
               <span class="text-xs text-gray-300 w-12 text-right">{{ formatTime(currentTime) }}</span>
               <div class="flex-1 bg-gray-600 rounded-full h-2 cursor-pointer relative" @click="handleSeek">
                 <div class="progress-bar h-2 rounded-full absolute top-0 left-0" 
@@ -190,9 +194,128 @@
         </div>
       </div>
 
+      <!-- 新增：音樂播放清單控制 -->
+      <div v-if="isJamendoConnected" class="p-4 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div class="flex items-center space-x-4">
+          <!-- 第一個曲風按鈕組 -->
+          <div class="flex items-center space-x-2">
+            <div class="relative">
+              <button @click="toggleGenreDropdown(0)" 
+                      class="genre-selector-btn px-6 py-3 bg-blue-500 text-blue rounded-lg font-semibold hover:bg-blue-600 flex items-center space-x-2">
+                <span>{{ playlistConfig[0].genre }}</span>
+                <font-awesome-icon icon="chevron-down" class="text-sm" />
+              </button>
+              <!-- 🔧 修改：浮動式曲風下拉選單 -->
+              <div v-if="genreDropdownOpen[0]" class="floating-dropdown">
+                <div v-for="genre in availableGenres" :key="genre.value" 
+                     @click="selectGenre(0, genre)" 
+                     class="dropdown-item">
+                  {{ genre.label }}
+                </div>
+              </div>
+            </div>
+            <div class="relative">
+              <button @click="toggleCountDropdown(0)" 
+                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2">
+                <span>{{ playlistConfig[0].count }}</span>
+                <font-awesome-icon icon="chevron-down" class="text-sm" />
+              </button>
+              <!-- 🔧 修改：浮動式數字下拉選單 -->
+              <div v-if="countDropdownOpen[0]" class="floating-dropdown">
+                <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
+                     @click="selectCount(0, count)" 
+                     class="dropdown-item">
+                  {{ count }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 加號 -->
+          <div class="text-white text-2xl font-bold">+</div>
+
+          <!-- 第二個曲風按鈕組 -->
+          <div class="flex items-center space-x-2">
+            <div class="relative">
+              <button @click="toggleGenreDropdown(1)" 
+                      class="genre-selector-btn px-6 py-3 bg-green-500 text-black rounded-lg font-semibold hover:bg-green-600 flex items-center space-x-2">
+                <span>{{ playlistConfig[1].genre }}</span>
+                <font-awesome-icon icon="chevron-down" class="text-sm" />
+              </button>
+              <div v-if="genreDropdownOpen[1]" class="floating-dropdown">
+                <div v-for="genre in availableGenres" :key="genre.value" 
+                     @click="selectGenre(1, genre)" 
+                     class="dropdown-item">
+                  {{ genre.label }}
+                </div>
+              </div>
+            </div>
+            <div class="relative">
+              <button @click="toggleCountDropdown(1)" 
+                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2">
+                <span>{{ playlistConfig[1].count }}</span>
+                <font-awesome-icon icon="chevron-down" class="text-sm" />
+              </button>
+              <div v-if="countDropdownOpen[1]" class="floating-dropdown">
+                <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
+                     @click="selectCount(1, count)" 
+                     class="dropdown-item">
+                  {{ count }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 加號 -->
+          <div class="text-white text-2xl font-bold">+</div>
+
+          <!-- 第三個曲風按鈕組 -->
+          <div class="flex items-center space-x-2">
+            <div class="relative">
+              <button @click="toggleGenreDropdown(2)" 
+                      class="genre-selector-btn px-6 py-3 bg-purple-500 text-black rounded-lg font-semibold hover:bg-purple-600 flex items-center space-x-2">
+                <span>{{ playlistConfig[2].genre }}</span>
+                <font-awesome-icon icon="chevron-down" class="text-sm" />
+              </button>
+              <div v-if="genreDropdownOpen[2]" class="floating-dropdown">
+                <div v-for="genre in availableGenres" :key="genre.value" 
+                     @click="selectGenre(2, genre)" 
+                     class="dropdown-item">
+                  {{ genre.label }}
+                </div>
+              </div>
+            </div>
+            <div class="relative">
+              <button @click="toggleCountDropdown(2)" 
+                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2">
+                <span>{{ playlistConfig[2].count }}</span>
+                <font-awesome-icon icon="chevron-down" class="text-sm" />
+              </button>
+              <div v-if="countDropdownOpen[2]" class="floating-dropdown">
+                <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
+                     @click="selectCount(2, count)" 
+                     class="dropdown-item">
+                  {{ count }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 播放按鈕 -->
+          <button @click="startCustomPlaylist" 
+                  :disabled="isGeneratingPlaylist"
+                  class="play-playlist-btn px-6 py-3 bg-orange-500 text-black rounded-lg font-bold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+            <font-awesome-icon v-if="isGeneratingPlaylist" icon="spinner" class="animate-spin" />
+            <font-awesome-icon v-else icon="play" />
+            <span v-if="isGeneratingPlaylist">生成中...</span>
+            <span v-else>播放</span>
+          </button>
+        </div>
+      </div>
+
       <!-- 主要內容 -->
       <div class="p-6">
-        <!-- Jamendo 曲風按鈕 - 使用官方推薦的10個曲風 -->
+        <!-- Jamendo 曲風按鈕 -->
         <div v-if="isJamendoConnected && currentMode !== 'favorites'">
           <div class="grid grid-cols-5 gap-4 mb-4">
             <button v-for="tag in jamendoTags.slice(0, 5)" :key="tag" 
@@ -259,6 +382,14 @@
                    class="absolute inset-0 bg-black/30 flex items-center justify-center">
                 <div class="bg-orange-500 text-white rounded-full p-2 animate-pulse">
                   <font-awesome-icon icon="play" class="text-sm" />
+                </div>
+              </div>
+              
+              <!-- 載入指示器 -->
+              <div v-if="currentTrack.id === track.id && isLoadingTrack" 
+                   class="absolute inset-0 bg-black/30 flex items-center justify-center">
+                <div class="bg-orange-500 text-white rounded-full p-2">
+                  <font-awesome-icon icon="spinner" class="text-sm animate-spin" />
                 </div>
               </div>
             </div>
@@ -346,6 +477,7 @@ try {
     currentTrackIndex: ref(0),
     autoPlayNext: ref(true),
     lastError: ref(''),
+    isLoadingTrack: ref(false),
     connectJamendo: () => Promise.resolve(),
     disconnectJamendo: () => {},
     playTrack: () => Promise.resolve(),
@@ -382,6 +514,7 @@ const {
   currentTrackIndex,
   autoPlayNext,
   lastError,
+  isLoadingTrack,
   connectJamendo,
   disconnectJamendo,
   playTrack,
@@ -416,7 +549,7 @@ const favoriteTracks = ref([])
 // 追蹤當前選中的標籤
 const selectedTag = ref('')
 
-// 🎵 Jamendo API 官方推薦的10個曲風（替換原有的 Spotify 曲風）
+// Jamendo API 官方推薦的10個曲風
 const jamendoTags = ref([
   'pop',        // 流行音樂
   'rock',       // 搖滾音樂  
@@ -430,7 +563,7 @@ const jamendoTags = ref([
   'lounge'      // 休閒音樂
 ])
 
-// 🎵 曲風名稱中英對照（顯示用）
+// 曲風名稱中英對照
 const genreNameMap = {
   'pop': 'POP',
   'rock': 'ROCK', 
@@ -448,6 +581,44 @@ const genreNameMap = {
 const equalizerBars = ref([])
 const audioFrequencyData = ref(Array(16).fill(0.2))
 
+// 🆕 新增：自定義播放清單功能
+const playlistConfig = ref([
+  { genre: 'Jazz', count: 3 },
+  { genre: 'Country', count: 5 },
+  { genre: 'Rock', count: 1 }
+])
+
+const genreDropdownOpen = ref([false, false, false])
+const countDropdownOpen = ref([false, false, false])
+const isGeneratingPlaylist = ref(false)
+
+// 🆕 新增：自定義播放清單狀態追蹤
+const customPlaylistStatus = ref({
+  isActive: false,
+  currentGroup: 1,
+  currentGenre: 'Jazz',
+  currentInGroup: 1,
+  totalInGroup: 3,
+  overallProgress: 1,
+  totalTracks: 9,
+  groupBreakpoints: [], // 記錄每組的起始和結束索引
+  originalConfig: [] // 保存原始配置
+})
+
+// 可用的曲風選項
+const availableGenres = [
+  { label: 'Pop', value: 'pop' },
+  { label: 'Rock', value: 'rock' },
+  { label: 'Hip Hop', value: 'hiphop' },
+  { label: 'Electronic', value: 'electronic' },
+  { label: 'Jazz', value: 'jazz' },
+  { label: 'Classical', value: 'classical' },
+  { label: 'Metal', value: 'metal' },
+  { label: 'Lounge', value: 'lounge' },
+  { label: 'Soundtrack', value: 'soundtrack' },
+  { label: 'World', value: 'world' }
+]
+
 // 搜尋防抖
 let searchTimeout = null
 const debouncedSearch = () => {
@@ -455,6 +626,254 @@ const debouncedSearch = () => {
   searchTimeout = setTimeout(() => {
     searchTracks()
   }, 500)
+}
+
+// 🆕 新增：自定義播放清單控制函數
+const toggleGenreDropdown = (index) => {
+  // 關閉其他下拉選單
+  genreDropdownOpen.value = genreDropdownOpen.value.map((_, i) => i === index ? !genreDropdownOpen.value[i] : false)
+  countDropdownOpen.value = countDropdownOpen.value.map(() => false)
+}
+
+const toggleCountDropdown = (index) => {
+  // 關閉其他下拉選單
+  countDropdownOpen.value = countDropdownOpen.value.map((_, i) => i === index ? !countDropdownOpen.value[i] : false)
+  genreDropdownOpen.value = genreDropdownOpen.value.map(() => false)
+}
+
+const selectGenre = (index, genre) => {
+  playlistConfig.value[index].genre = genre.label
+  genreDropdownOpen.value[index] = false
+  console.log(`選擇曲風 ${index + 1}: ${genre.label}`)
+}
+
+const selectCount = (index, count) => {
+  playlistConfig.value[index].count = count
+  countDropdownOpen.value[index] = false
+  console.log(`選擇數量 ${index + 1}: ${count}`)
+}
+
+// 🆕 新增：更新自定義播放清單狀態
+const updateCustomPlaylistStatus = () => {
+  if (!customPlaylistStatus.value.isActive || currentPlaylist.value.length === 0) {
+    return
+  }
+  
+  const currentIndex = currentTrackIndex.value
+  const breakpoints = customPlaylistStatus.value.groupBreakpoints
+  
+  // 找到當前歌曲屬於哪一組
+  let currentGroup = 1
+  let currentInGroup = 1
+  let totalInGroup = 1
+  let currentGenre = 'Unknown'
+  
+  for (let i = 0; i < breakpoints.length; i++) {
+    if (currentIndex >= breakpoints[i].start && currentIndex <= breakpoints[i].end) {
+      currentGroup = i + 1
+      currentInGroup = currentIndex - breakpoints[i].start + 1
+      totalInGroup = breakpoints[i].end - breakpoints[i].start + 1
+      currentGenre = breakpoints[i].genre
+      break
+    }
+  }
+  
+  customPlaylistStatus.value.currentGroup = currentGroup
+  customPlaylistStatus.value.currentGenre = currentGenre
+  customPlaylistStatus.value.currentInGroup = currentInGroup
+  customPlaylistStatus.value.totalInGroup = totalInGroup
+  customPlaylistStatus.value.overallProgress = currentIndex + 1
+  
+  console.log('📊 播放清單狀態更新:', {
+    group: `${currentGroup}/${breakpoints.length}`,
+    inGroup: `${currentInGroup}/${totalInGroup}`,
+    overall: `${currentIndex + 1}/${currentPlaylist.value.length}`,
+    genre: currentGenre
+  })
+}
+
+// 🆕 新增：改進的獲取歌曲函數（包含備案機制）
+const getTracksWithFallback = async (genreValue, genreLabel, count) => {
+  try {
+    console.log(`🎵 嘗試按標籤獲取 ${genreLabel} 歌曲...`)
+    
+    // 方案1：按標籤搜尋
+    if (getTracksByTag && typeof getTracksByTag === 'function') {
+      const tracks = await getTracksByTag(genreValue, { limit: Math.max(count, 15) })
+      
+      if (tracks && tracks.length > 0) {
+        console.log(`✅ 按標籤找到 ${tracks.length} 首 ${genreLabel} 歌曲`)
+        return tracks
+      }
+    }
+    
+    console.log(`⚠️ 按標籤搜尋 ${genreLabel} 失敗，嘗試文字搜尋...`)
+    
+    // 方案2：直接搜尋曲風名稱
+    if (jamendoSearch && typeof jamendoSearch === 'function') {
+      const searchResults = await jamendoSearch(genreLabel, { limit: Math.max(count, 15) })
+      
+      if (searchResults && searchResults.length > 0) {
+        console.log(`✅ 搜尋找到 ${searchResults.length} 首 ${genreLabel} 相關歌曲`)
+        return searchResults
+      }
+    }
+    
+    console.log(`⚠️ 搜尋 ${genreLabel} 也失敗，嘗試獲取熱門歌曲...`)
+    
+    // 方案3：獲取熱門歌曲作為備案
+    if (getPopularTracks && typeof getPopularTracks === 'function') {
+      const popularTracks = await getPopularTracks({ limit: Math.max(count, 10) })
+      
+      if (popularTracks && popularTracks.length > 0) {
+        console.log(`✅ 使用熱門歌曲作為 ${genreLabel} 的備案`)
+        return popularTracks
+      }
+    }
+    
+    console.error(`❌ 所有方案都失敗，無法獲取 ${genreLabel} 歌曲`)
+    return []
+    
+  } catch (error) {
+    console.error(`❌ 獲取 ${genreLabel} 歌曲時出錯:`, error)
+    return []
+  }
+}
+
+// 🆕 新增：生成並播放自定義播放清單（改進版）
+const startCustomPlaylist = async () => {
+  try {
+    isGeneratingPlaylist.value = true
+    console.log('🎵 開始生成自定義播放清單...', playlistConfig.value)
+    
+    const customPlaylist = []
+    const groupBreakpoints = []
+    let currentIndex = 0
+    
+    // 保存原始配置
+    customPlaylistStatus.value.originalConfig = [...playlistConfig.value]
+    
+    // 按順序為每個曲風獲取指定數量的歌曲
+    for (let i = 0; i < playlistConfig.value.length; i++) {
+      const config = playlistConfig.value[i]
+      const genreValue = availableGenres.find(g => g.label === config.genre)?.value || 'pop'
+      
+      console.log(`📋 獲取 ${config.genre} 的 ${config.count} 首歌...`)
+      
+      try {
+        // 🔧 使用改進的獲取函數（包含備案機制）
+        const tracks = await getTracksWithFallback(genreValue, config.genre, config.count)
+        
+        if (tracks.length > 0) {
+          // 🔧 過濾掉可能有問題的音軌
+          const validTracks = tracks.filter(track => {
+            const hasValidUrl = track.audio || track.audiodownload
+            const hasBasicInfo = track.name && track.artist_name
+            return hasValidUrl && hasBasicInfo
+          })
+          
+          // 取前 N 首歌（根據用戶設定的數量）
+          const selectedTracks = validTracks.slice(0, config.count)
+          
+          if (selectedTracks.length > 0) {
+            // 記錄這一組的索引範圍
+            const groupStart = currentIndex
+            const groupEnd = currentIndex + selectedTracks.length - 1
+            
+            groupBreakpoints.push({
+              genre: config.genre,
+              start: groupStart,
+              end: groupEnd,
+              count: selectedTracks.length
+            })
+            
+            customPlaylist.push(...selectedTracks)
+            currentIndex += selectedTracks.length
+            
+            console.log(`✅ 已添加 ${selectedTracks.length} 首 ${config.genre} 歌曲 (索引 ${groupStart}-${groupEnd})`)
+          } else {
+            console.warn(`⚠️ ${config.genre} 曲風沒有有效的歌曲`)
+          }
+        } else {
+          console.warn(`⚠️ 沒有找到 ${config.genre} 曲風的歌曲`)
+        }
+      } catch (error) {
+        console.error(`❌ 獲取 ${config.genre} 歌曲失敗:`, error)
+        continue
+      }
+    }
+    
+    if (customPlaylist.length === 0) {
+      console.warn('⚠️ 沒有找到任何歌曲')
+      lastError.value = '無法生成播放清單，請檢查網路連接或嘗試其他曲風'
+      return
+    }
+    
+    console.log(`🎉 播放清單生成完成，共 ${customPlaylist.length} 首歌曲`)
+    console.log('📊 組別分佈:', groupBreakpoints)
+    
+    // 🔧 設置狀態追蹤
+    customPlaylistStatus.value.isActive = true
+    customPlaylistStatus.value.groupBreakpoints = groupBreakpoints
+    customPlaylistStatus.value.totalTracks = customPlaylist.length
+    customPlaylistStatus.value.overallProgress = 1
+    
+    // 🔧 清除之前的錯誤
+    lastError.value = ''
+    
+    // 設置播放清單並開始播放第一首歌
+    if (setPlaylist && typeof setPlaylist === 'function') {
+      setPlaylist(customPlaylist, 0)
+    }
+    
+    // 🔧 嘗試播放第一首歌，失敗則自動跳到下一首
+    await playFirstAvailableTrack(customPlaylist)
+    
+    // 顯示播放清單詳情
+    displayedTracks.value = customPlaylist
+    currentMode.value = 'custom'
+    
+    // 初始化狀態顯示
+    updateCustomPlaylistStatus()
+    
+  } catch (error) {
+    console.error('❌ 生成自定義播放清單失敗:', error)
+    lastError.value = '生成播放清單失敗: ' + error.message
+  } finally {
+    isGeneratingPlaylist.value = false
+  }
+}
+
+// 🆕 新增：播放第一首可用的歌曲
+const playFirstAvailableTrack = async (playlist) => {
+  for (let i = 0; i < Math.min(playlist.length, 5); i++) {
+    try {
+      console.log(`🎵 嘗試播放第 ${i + 1} 首歌: ${playlist[i].name}`)
+      
+      if (playTrack && typeof playTrack === 'function') {
+        await playTrack(playlist[i], playlist, i)
+        console.log(`✅ 成功播放第 ${i + 1} 首歌`)
+        return
+      }
+    } catch (playError) {
+      console.error(`❌ 播放第 ${i + 1} 首歌失敗:`, playError)
+      
+      if (i < Math.min(playlist.length, 5) - 1) {
+        console.log(`🔄 嘗試播放下一首...`)
+        continue
+      } else {
+        console.error(`❌ 前 ${Math.min(playlist.length, 5)} 首歌都無法播放`)
+        lastError.value = '播放清單中的歌曲可能有問題，請嘗試其他曲風'
+        throw playError
+      }
+    }
+  }
+}
+
+// 🆕 新增：點擊頁面其他地方關閉下拉選單
+const closeAllDropdowns = () => {
+  genreDropdownOpen.value = [false, false, false]
+  countDropdownOpen.value = [false, false, false]
 }
 
 // 錯誤處理
@@ -467,33 +886,30 @@ const handleImageError = (event) => {
   event.target.style.display = 'none'
 }
 
-// 🎵 新增：曲風按鈕樣式控制
+// 曲風按鈕樣式控制
 const getGenreButtonClass = (tag) => {
   if (selectedTag.value === tag) {
-    // 選中狀態：粉紅色背景，白色文字
     return 'bg-pink-500 text-white font-semibold shadow-lg hover:bg-pink-600'
   } else {
-    // 未選中狀態：白色背景，黑色文字
     return 'bg-white text-black font-medium shadow-md border border-gray-200 hover:bg-gray-50'
   }
 }
 
-// 🎵 新增：獲取曲風顯示名稱
+// 獲取曲風顯示名稱
 const getGenreDisplayName = (tag) => {
   return genreNameMap[tag] || tag.toUpperCase()
 }
 
-// 🎵 新增：獲取頻率組（低音、中音、高音）
+// 獲取頻率組
 const getFrequencyGroup = (index) => {
   if (index < 5) return 'bass'      // 低音: 0-4
   if (index < 11) return 'mid'      // 中音: 5-10
   return 'high'                     // 高音: 11-15
 }
 
-// 🎵 改進的音頻均衡器動態效果
+// 改進的音頻均衡器動態效果
 const simulateRealisticAudioSpectrum = () => {
   if (!isPlaying.value) {
-    // 音樂停止時緩慢降低所有條形
     audioFrequencyData.value = audioFrequencyData.value.map(value => 
       Math.max(0.1, value * 0.95)
     )
@@ -502,49 +918,40 @@ const simulateRealisticAudioSpectrum = () => {
   }
   
   const currentTimeMs = Date.now()
-  const beatPeriod = 600 // 主要節拍週期
+  const beatPeriod = 600
   const beatPhase = (currentTimeMs % beatPeriod) / beatPeriod
-  
-  // 計算主要節拍強度
   const beatIntensity = Math.max(0, Math.sin(beatPhase * Math.PI * 2))
   
-  // 為不同頻率組創建不同的模式
   audioFrequencyData.value = audioFrequencyData.value.map((currentValue, index) => {
     const freqGroup = getFrequencyGroup(index)
     let newValue = currentValue
     
     if (freqGroup === 'bass') {
-      // 低音：跟隨主要節拍，變化較慢但幅度大
       const bassPattern = beatIntensity * (0.8 + Math.sin(currentTimeMs * 0.003 + index) * 0.2)
       const bassRandom = 0.7 + Math.random() * 0.3
       newValue = bassPattern * bassRandom
       
-      // 在節拍點有額外的衝擊
       if (beatPhase < 0.1) {
         newValue = Math.min(1.0, newValue * 1.5)
       }
       
     } else if (freqGroup === 'mid') {
-      // 中音：較複雜的模式，有時跟隨人聲和樂器
       const midBase = Math.sin(currentTimeMs * 0.005 + index * 0.8) * 0.4 + 0.5
-      const midRhythm = Math.sin(beatPhase * Math.PI * 3) * 0.3 // 更快的節拍
+      const midRhythm = Math.sin(beatPhase * Math.PI * 3) * 0.3
       const midRandom = 0.6 + Math.random() * 0.4
       newValue = (midBase + midRhythm) * midRandom
       
-    } else { // high
-      // 高音：快速變化，模擬高帽、鈸等
+    } else {
       const highFreq = Math.sin(currentTimeMs * 0.008 + index * 1.5) * 0.5 + 0.4
-      const highSpikes = Math.random() > 0.8 ? Math.random() * 0.6 : 0 // 隨機尖峰
+      const highSpikes = Math.random() > 0.8 ? Math.random() * 0.6 : 0
       const highRandom = 0.5 + Math.random() * 0.5
       newValue = (highFreq + highSpikes) * highRandom
       
-      // 在某些節拍點有鈸的效果
       if (beatPhase > 0.7 && beatPhase < 0.9 && Math.random() > 0.7) {
         newValue = Math.min(1.0, newValue * 2)
       }
     }
     
-    // 平滑過渡
     const smoothing = freqGroup === 'bass' ? 0.8 : freqGroup === 'mid' ? 0.7 : 0.6
     return currentValue * smoothing + newValue * (1 - smoothing)
   })
@@ -552,7 +959,7 @@ const simulateRealisticAudioSpectrum = () => {
   updateEqualizerBars()
 }
 
-// 🎵 更新均衡器條形顯示
+// 更新均衡器條形顯示
 const updateEqualizerBars = () => {
   equalizerBars.value.forEach((bar, index) => {
     if (!bar) return
@@ -561,12 +968,9 @@ const updateEqualizerBars = () => {
     const height = Math.max(8, Math.min(90, intensity * 100))
     const freqGroup = getFrequencyGroup(index)
     
-    // 設置高度
     bar.style.height = `${height}%`
     
-    // 根據頻率組和強度設置顏色
     if (intensity > 0.8) {
-      // 高強度：亮色
       if (freqGroup === 'bass') {
         bar.style.background = 'linear-gradient(to top, #ff4500, #ff6347, #ffa500)'
       } else if (freqGroup === 'mid') {
@@ -576,7 +980,6 @@ const updateEqualizerBars = () => {
       }
       bar.style.boxShadow = `0 0 ${intensity * 10}px rgba(255, 165, 0, ${intensity * 0.8})`
     } else if (intensity > 0.5) {
-      // 中等強度：標準色
       if (freqGroup === 'bass') {
         bar.style.background = 'linear-gradient(to top, #ff6b35, #ff8c42, #ffa449)'
       } else if (freqGroup === 'mid') {
@@ -586,7 +989,6 @@ const updateEqualizerBars = () => {
       }
       bar.style.boxShadow = `0 0 ${intensity * 6}px rgba(255, 140, 0, ${intensity * 0.5})`
     } else {
-      // 低強度：暗色
       if (freqGroup === 'bass') {
         bar.style.background = 'linear-gradient(to top, #8b4513, #cd853f)'
       } else if (freqGroup === 'mid') {
@@ -597,7 +999,6 @@ const updateEqualizerBars = () => {
       bar.style.boxShadow = 'none'
     }
     
-    // 添加頻率組特定的效果
     if (freqGroup === 'bass') {
       bar.style.filter = `saturate(${1 + intensity * 0.5})`
     } else if (freqGroup === 'high') {
@@ -608,11 +1009,11 @@ const updateEqualizerBars = () => {
   })
 }
 
-// 🎵 均衡器動畫控制
+// 均衡器動畫控制
 let equalizerInterval = null
 const startEqualizerAnimation = () => {
   if (equalizerInterval) clearInterval(equalizerInterval)
-  equalizerInterval = setInterval(simulateRealisticAudioSpectrum, 80) // 12.5 FPS
+  equalizerInterval = setInterval(simulateRealisticAudioSpectrum, 80)
 }
 
 const stopEqualizerAnimation = () => {
@@ -621,7 +1022,6 @@ const stopEqualizerAnimation = () => {
     equalizerInterval = null
   }
   
-  // 緩慢淡出效果
   const fadeOut = () => {
     audioFrequencyData.value = audioFrequencyData.value.map(value => value * 0.9)
     updateEqualizerBars()
@@ -629,7 +1029,6 @@ const stopEqualizerAnimation = () => {
     if (Math.max(...audioFrequencyData.value) > 0.05) {
       setTimeout(fadeOut, 50)
     } else {
-      // 設置為最小值
       audioFrequencyData.value.fill(0.1)
       equalizerBars.value.forEach(bar => {
         if (bar) {
@@ -644,42 +1043,85 @@ const stopEqualizerAnimation = () => {
   fadeOut()
 }
 
-// 播放控制函數
-const handlePreviousTrack = () => {
-  console.log('⏮️ 點擊上一首按鈕')
-  if (previousTrack && typeof previousTrack === 'function') {
-    previousTrack()
-  } else {
-    console.warn('previousTrack 函數不可用')
+// 改進的播放控制函數 - 防止競爭條件
+const handlePreviousTrack = async () => {
+  try {
+    console.log('⏮️ 點擊上一首按鈕')
+    if (isLoadingTrack.value) {
+      console.log('⏳ 歌曲正在載入中，請稍候...')
+      return
+    }
+    
+    if (previousTrack && typeof previousTrack === 'function') {
+      await previousTrack()
+    } else {
+      console.warn('previousTrack 函數不可用')
+    }
+  } catch (error) {
+    console.error('❌ 上一首失敗:', error)
   }
 }
 
-const handleNextTrack = () => {
-  console.log('⏭️ 點擊下一首按鈕') 
-  if (nextTrack && typeof nextTrack === 'function') {
-    nextTrack()
-  } else {
-    console.warn('nextTrack 函數不可用')
+const handleNextTrack = async () => {
+  try {
+    console.log('⏭️ 點擊下一首按鈕')
+    if (isLoadingTrack.value) {
+      console.log('⏳ 歌曲正在載入中，請稍候...')
+      return
+    }
+    
+    if (nextTrack && typeof nextTrack === 'function') {
+      await nextTrack()
+    } else {
+      console.warn('nextTrack 函數不可用')
+    }
+  } catch (error) {
+    console.error('❌ 下一首失敗:', error)
   }
 }
 
-const handleTogglePlay = () => {
-  console.log('⏯️ 點擊播放/暫停按鈕')
-  if (togglePlay && typeof togglePlay === 'function') {
-    togglePlay()
-  } else {
-    console.warn('togglePlay 函數不可用')
+const handleTogglePlay = async () => {
+  try {
+    console.log('⏯️ 點擊播放/暫停按鈕')
+    
+    if (!currentTrack.value.name) {
+      console.warn('⚠️ 沒有可播放的音軌')
+      return
+    }
+    
+    if (togglePlay && typeof togglePlay === 'function') {
+      await togglePlay()
+    } else {
+      console.warn('togglePlay 函數不可用')
+    }
+  } catch (error) {
+    console.error('❌ 播放/暫停失敗:', error)
   }
 }
 
-// 歌曲點擊處理
+// 改進的歌曲點擊處理 - 防止重複點擊
+let isClickProcessing = false
 const handleTrackClick = async (track) => {
   try {
+    if (isClickProcessing || isLoadingTrack.value) {
+      console.log('⏳ 正在處理中，請稍候...')
+      return
+    }
+    
+    isClickProcessing = true
     console.log('🎵 點擊歌曲:', track.name)
-    await playTrack(track)
+    
+    if (playTrack && typeof playTrack === 'function') {
+      await playTrack(track)
+    } else {
+      console.warn('playTrack 函數不可用')
+    }
   } catch (error) {
     console.error('❌ 播放歌曲失敗:', error)
-    alert('播放失敗: ' + error.message)
+    // 不再顯示 alert，改為控制台記錄
+    lastError.value = '播放失敗: ' + error.message
+  } finally {
+    isClickProcessing = false
   }
 }
 
@@ -750,7 +1192,7 @@ const searchTracks = async () => {
   if (!searchQuery.value.trim() || !isJamendoConnected.value) return
   
   loading.value = true
-  selectedTag.value = '' // 清除選中的標籤
+  selectedTag.value = ''
   
   try {
     if (jamendoSearch && typeof jamendoSearch === 'function') {
@@ -773,7 +1215,7 @@ const handleSeek = (event) => {
 // 按標籤搜尋
 const searchByTag = async (tag) => {
   selectedTag.value = tag
-  searchQuery.value = '' // 清除搜尋框
+  searchQuery.value = ''
   
   loading.value = true
   try {
@@ -792,8 +1234,8 @@ const searchByTag = async (tag) => {
 // 設置模式
 const setCurrentMode = async (mode) => {
   currentMode.value = mode
-  selectedTag.value = '' // 清除選中的標籤
-  searchQuery.value = '' // 清除搜尋框
+  selectedTag.value = ''
+  searchQuery.value = ''
   
   if (mode === 'favorites') {
     displayedTracks.value = [...favoriteTracks.value]
@@ -870,6 +1312,20 @@ watch(isPlaying, (playing) => {
   }
 }, { immediate: true })
 
+// 🆕 新增：監聽播放索引變化 - 更新自定義播放清單狀態
+watch(currentTrackIndex, () => {
+  if (customPlaylistStatus.value.isActive) {
+    updateCustomPlaylistStatus()
+  }
+}, { immediate: false })
+
+// 🆕 新增：監聽模式變化 - 重置自定義播放清單狀態
+watch(currentMode, (newMode) => {
+  if (newMode !== 'custom') {
+    customPlaylistStatus.value.isActive = false
+  }
+}, { immediate: false })
+
 // 監聽 Jamendo 連接狀態
 watch(isJamendoConnected, async (connected) => {
   if (connected) {
@@ -884,17 +1340,25 @@ watch(isJamendoConnected, async (connected) => {
 onMounted(async () => {
   loadFavoritesFromStorage()
   
-  // 等待 Jamendo 連接後再載入數據
   if (isJamendoConnected.value && currentMode.value !== 'favorites') {
     await setCurrentMode('popular')
   }
   
-  // 初始化均衡器
   setTimeout(() => {
     if (isPlaying.value) {
       startEqualizerAnimation()
     }
   }, 500)
+  
+  // 🆕 新增：添加全局點擊事件監聽器來關閉下拉選單
+  document.addEventListener('click', (event) => {
+    const target = event.target
+    const isDropdownButton = target.closest('.genre-selector-btn') || target.closest('.count-selector-btn')
+    
+    if (!isDropdownButton) {
+      closeAllDropdowns()
+    }
+  })
 })
 
 // 清理資源
@@ -906,6 +1370,9 @@ onUnmounted(() => {
   if (equalizerInterval) {
     clearInterval(equalizerInterval)
   }
+  
+  // 🆕 新增：移除全局事件監聽器
+  document.removeEventListener('click', closeAllDropdowns)
 })
 </script>
 
@@ -958,7 +1425,7 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* 🎵 改進的音頻均衡器視覺效果 */
+/* 改進的音頻均衡器視覺效果 */
 .audio-visualizer {
   display: flex;
   align-items: center;
@@ -1058,7 +1525,7 @@ onUnmounted(() => {
   border: none;
 }
 
-/* 🎵 新的曲風按鈕樣式 */
+/* 曲風按鈕樣式 */
 .genre-btn-new {
   font-weight: 600;
   text-transform: uppercase;
@@ -1081,7 +1548,7 @@ onUnmounted(() => {
 }
 
 .genre-btn-new.bg-white:hover {
-  background-color: #f9fafb;
+  background-color: #858585;
 }
 
 /* 選中狀態：粉紅色背景，白色文字 */
@@ -1139,6 +1606,114 @@ onUnmounted(() => {
   .control-button {
     width: 40px;
     height: 40px;
+  }
+}
+
+/* 🆕 新增：浮動式下拉選單樣式 */
+.floating-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: rgba(237, 244, 176, 0.542);
+  border: 1px solid #1f4288;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(14, 14, 14, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  z-index: 9999; /* 🔧 確保浮動在最上層 */
+  min-width: 120px;
+  max-height: 200px;
+  overflow-y: auto;
+  backdrop-filter: blur(8px);
+  animation: dropdownFadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  color: #0f0f0f;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.dropdown-item:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.dropdown-item:first-child {
+  border-top-left-radius: 7px;
+  border-top-right-radius: 7px;
+}
+
+.dropdown-item:last-child {
+  border-bottom-left-radius: 7px;
+  border-bottom-right-radius: 7px;
+  border-bottom: none;
+}
+
+/* 下拉選單動畫 */
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 🆕 新增：自定義播放清單狀態樣式 */
+.custom-playlist-status {
+  min-width: 200px;
+  max-width: 300px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  backdrop-filter: blur(5px);
+}
+
+.custom-playlist-status:hover {
+  background: rgba(30, 58, 138, 0.6);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* 改進音頻均衡器樣式 */
+.audio-visualizer {
+  transition: opacity 0.3s ease;
+}
+
+/* 優化播放控制按鈕間距 */
+.play-controls-container {
+  margin: 0 1rem;
+}
+
+/* 🔧 確保相對定位容器正確設置 */
+.relative {
+  position: relative;
+}
+
+/* 響應式優化 */
+@media (max-width: 1024px) {
+  .custom-playlist-status {
+    min-width: 150px;
+    max-width: 200px;
+  }
+  
+  .custom-playlist-status .text-sm {
+    font-size: 0.75rem;
+  }
+  
+  .custom-playlist-status .text-xs {
+    font-size: 0.7rem;
+  }
+  
+  .floating-dropdown {
+    min-width: 100px;
+    max-height: 150px;
+  }
+  
+  .dropdown-item {
+    padding: 6px 12px;
+    font-size: 0.875rem;
   }
 }
 </style>
