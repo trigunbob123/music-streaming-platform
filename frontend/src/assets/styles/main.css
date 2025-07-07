@@ -52,7 +52,7 @@ body {
 .bg-gray-800 { background-color: #1f2937; }
 .bg-pink-500 { background-color: #ec4899; }
 .bg-yellow-400 { background-color: #fbbf24; }
-.bg-white { background-color: white; }
+.bg-white { background-color: rgba(155, 245, 214, 0.143); }
 .bg-transparent { background-color: transparent; }
 
 /* 間距和尺寸 */
@@ -114,11 +114,11 @@ body {
 }
 
 /* 懸停效果 */
-.hover\:bg-gray-700:hover { background-color: #374151; }
+.hover\:bg-gray-700:hover { background-color: #81a4dd; }
 .hover\:bg-pink-600:hover { background-color: #db2777; }
 .hover\:bg-yellow-500:hover { background-color: #f59e0b; }
 .hover\:bg-gray-200:hover { background-color: #e5e7eb; }
-.hover\:bg-gray-500:hover { background-color: #6b7280; }
+.hover\:bg-gray-500:hover { background-color: #95b6f6; }
 .hover\:text-yellow-300:hover { color: #fcd34d; }
 .hover\:text-white:hover { color: white; }
 .hover\:text-teal-600:hover { color: #0d9488; }

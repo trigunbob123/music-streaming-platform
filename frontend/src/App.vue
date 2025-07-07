@@ -47,7 +47,8 @@
         </button>
       </nav>
 
-      <!-- 錯誤顯示 -->
+      <!-- 錯誤顯示區塊已隱藏 -->
+      <!-- 
       <div v-if="lastError" class="mt-4">
         <div class="bg-red-900 p-3 rounded-lg">
           <div class="flex items-center text-red-300 text-sm">
@@ -59,6 +60,7 @@
           </button>
         </div>
       </div>
+      -->
     </div>
 
     <!-- 主要內容區域 -->
@@ -201,7 +203,7 @@
           <div class="flex items-center space-x-2">
             <div class="relative">
               <button @click="toggleGenreDropdown(0)" 
-                      class="genre-selector-btn px-6 py-3 bg-blue-500 text-blue rounded-lg font-semibold hover:bg-blue-600 flex items-center space-x-2">
+                      class="genre-selector-btn px-6 py-3 bg-blue-500 text-blue rounded-lg font-semibold hover:bg-blue-600 flex items-center space-x-2 cursor-pointer">
                 <span>{{ playlistConfig[0].genre }}</span>
                 <font-awesome-icon icon="chevron-down" class="text-sm" />
               </button>
@@ -216,7 +218,7 @@
             </div>
             <div class="relative">
               <button @click="toggleCountDropdown(0)" 
-                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2">
+                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2 cursor-pointer">
                 <span>{{ playlistConfig[0].count }}</span>
                 <font-awesome-icon icon="chevron-down" class="text-sm" />
               </button>
@@ -238,7 +240,7 @@
           <div class="flex items-center space-x-2">
             <div class="relative">
               <button @click="toggleGenreDropdown(1)" 
-                      class="genre-selector-btn px-6 py-3 bg-green-500 text-black rounded-lg font-semibold hover:bg-green-600 flex items-center space-x-2">
+                      class="genre-selector-btn px-6 py-3 bg-green-500 text-black rounded-lg font-semibold hover:bg-green-600 flex items-center space-x-2 cursor-pointer">
                 <span>{{ playlistConfig[1].genre }}</span>
                 <font-awesome-icon icon="chevron-down" class="text-sm" />
               </button>
@@ -252,7 +254,7 @@
             </div>
             <div class="relative">
               <button @click="toggleCountDropdown(1)" 
-                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2">
+                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2 cursor-pointer">
                 <span>{{ playlistConfig[1].count }}</span>
                 <font-awesome-icon icon="chevron-down" class="text-sm" />
               </button>
@@ -273,7 +275,7 @@
           <div class="flex items-center space-x-2">
             <div class="relative">
               <button @click="toggleGenreDropdown(2)" 
-                      class="genre-selector-btn px-6 py-3 bg-purple-500 text-black rounded-lg font-semibold hover:bg-purple-600 flex items-center space-x-2">
+                      class="genre-selector-btn px-6 py-3 bg-purple-500 text-black rounded-lg font-semibold hover:bg-purple-600 flex items-center space-x-2 cursor-pointer">
                 <span>{{ playlistConfig[2].genre }}</span>
                 <font-awesome-icon icon="chevron-down" class="text-sm" />
               </button>
@@ -287,7 +289,7 @@
             </div>
             <div class="relative">
               <button @click="toggleCountDropdown(2)" 
-                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2">
+                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2 cursor-pointer">
                 <span>{{ playlistConfig[2].count }}</span>
                 <font-awesome-icon icon="chevron-down" class="text-sm" />
               </button>
@@ -304,7 +306,7 @@
           <!-- 播放按鈕 -->
           <button @click="startCustomPlaylist" 
                   :disabled="isGeneratingPlaylist"
-                  class="play-playlist-btn px-6 py-3 bg-orange-500 text-black rounded-lg font-bold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                  class="play-playlist-btn px-6 py-3 bg-orange-500 text-black hover:bg-gray-700 rounded-lg font-bold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 cursor-pointer">
             <font-awesome-icon v-if="isGeneratingPlaylist" icon="spinner" class="animate-spin" />
             <font-awesome-icon v-else icon="play" />
             <span v-if="isGeneratingPlaylist">生成中...</span>
@@ -337,11 +339,11 @@
 
         <!-- 我的收藏標題 -->
         <div v-if="currentMode === 'favorites'" class="mb-6">
-          <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+          <h2 class="text-2xl font-bold text-gray-300 flex items-center">
             <font-awesome-icon icon="heart" class="mr-2 text-red-500" />
             我的收藏 ({{ favoriteTrackIds.size }} 首)
           </h2>
-          <p class="text-gray-600 text-sm mt-1">你收藏的音樂清單</p>
+          <p class="text-gray-300 text-sm mt-1">你收藏的音樂清單</p>
         </div>
 
         <!-- 載入中 -->
@@ -436,7 +438,7 @@
           
           <!-- 無歌曲提示 -->
           <div v-else-if="!loading && displayedTracks.length === 0" 
-               class="col-span-6 text-center py-16 text-gray-500">
+               class="col-span-6 text-center py-16 text-gray-300">
             <font-awesome-icon :icon="currentMode === 'favorites' ? 'heart' : 'search'" class="text-6xl mb-4 text-gray-300" />
             <h3 class="text-xl font-medium mb-2">
               {{ currentMode === 'favorites' ? '還沒有收藏' : '搜尋音樂' }}
@@ -805,7 +807,7 @@ const startCustomPlaylist = async () => {
     
     if (customPlaylist.length === 0) {
       console.warn('⚠️ 沒有找到任何歌曲')
-      lastError.value = '無法生成播放清單，請檢查網路連接或嘗試其他曲風'
+      // lastError.value = '無法生成播放清單，請檢查網路連接或嘗試其他曲風'
       return
     }
     
@@ -819,7 +821,7 @@ const startCustomPlaylist = async () => {
     customPlaylistStatus.value.overallProgress = 1
     
     // 🔧 清除之前的錯誤
-    lastError.value = ''
+    // lastError.value = ''
     
     // 設置播放清單並開始播放第一首歌
     if (setPlaylist && typeof setPlaylist === 'function') {
@@ -838,7 +840,7 @@ const startCustomPlaylist = async () => {
     
   } catch (error) {
     console.error('❌ 生成自定義播放清單失敗:', error)
-    lastError.value = '生成播放清單失敗: ' + error.message
+    // lastError.value = '生成播放清單失敗: ' + error.message
   } finally {
     isGeneratingPlaylist.value = false
   }
@@ -863,7 +865,7 @@ const playFirstAvailableTrack = async (playlist) => {
         continue
       } else {
         console.error(`❌ 前 ${Math.min(playlist.length, 5)} 首歌都無法播放`)
-        lastError.value = '播放清單中的歌曲可能有問題，請嘗試其他曲風'
+        // lastError.value = '播放清單中的歌曲可能有問題，請嘗試其他曲風'
         throw playError
       }
     }
@@ -876,10 +878,10 @@ const closeAllDropdowns = () => {
   countDropdownOpen.value = [false, false, false]
 }
 
-// 錯誤處理
-const clearError = () => {
-  lastError.value = ''
-}
+// 錯誤處理（已移除錯誤清除函數，但保留錯誤記錄）
+// const clearError = () => {
+//   lastError.value = ''
+// }
 
 // 圖片錯誤處理
 const handleImageError = (event) => {
@@ -1118,8 +1120,8 @@ const handleTrackClick = async (track) => {
     }
   } catch (error) {
     console.error('❌ 播放歌曲失敗:', error)
-    // 不再顯示 alert，改為控制台記錄
-    lastError.value = '播放失敗: ' + error.message
+    // 不再顯示錯誤訊息
+    // lastError.value = '播放失敗: ' + error.message
   } finally {
     isClickProcessing = false
   }
