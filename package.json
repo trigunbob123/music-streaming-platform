@@ -1,0 +1,36 @@
+{
+  "name": "music-streaming-platform",
+  "version": "1.0.0",
+  "description": "DDM360 音樂串流平台 - Railway 部署版本",
+  "scripts": {
+    "build": "echo '🔨 Building frontend...' && cd frontend && npm ci && npm run build && echo '✅ Frontend build complete'",
+    "start": "cd backend && python manage.py runserver 0.0.0.0:8000",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python manage.py runserver",
+    "install:all": "npm run install:frontend && npm run install:backend",
+    "install:frontend": "cd frontend && npm ci",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "migrate": "cd backend && python manage.py migrate",
+    "collectstatic": "cd backend && python manage.py collectstatic --noinput",
+    "setup:dev": "npm run install:all && npm run migrate",
+    "railway:deploy": "railway up"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "music",
+    "streaming",
+    "django",
+    "vue",
+    "railway",
+    "jamendo"
+  ],
+  "author": "DDM360",
+  "license": "MIT"
+}

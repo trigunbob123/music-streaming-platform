@@ -3,7 +3,11 @@ import { ref, onMounted, onUnmounted } from 'vue'
 export function useJamendo() {
   // 基本配置
   const JAMENDO_CLIENT_ID = import.meta.env.VITE_JAMENDO_CLIENT_ID
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || (
+    import.meta.env.PROD 
+      ? window.location.origin  // Railway 生產環境使用當前域名
+      : 'http://127.0.0.1:8000'  // 本地開發環境
+  )
   
   // 狀態管理
   const isJamendoConnected = ref(false)
@@ -33,20 +37,41 @@ export function useJamendo() {
   const playbackState = ref('idle') // 'idle', 'loading', 'playing', 'paused', 'error'
 
   // 檢查配置
-  const checkConfig = async () => {
+ const checkConfig = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/jamendo/config/`)
-      const config = await response.json()
+      console.log('🚂 檢查 Railway Jamendo 配置...')
       
-      jamendoConfigured.value = config.available && config.status === 'configured'
+      // Railway 環境使用健康檢查端點
+      const configEndpoint = import.meta.env.PROD 
+        ? `${API_BASE}/api/health/`
+        : `${API_BASE}/api/jamendo/config/`
       
-      if (!jamendoConfigured.value) {
-        console.warn('⚠️ Jamendo 未正確配置')
-        return false
+      const response = await fetch(configEndpoint)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
       }
       
-      console.log('✅ Jamendo 配置檢查通過')
-      return true
+      const config = await response.json()
+      
+      if (import.meta.env.PROD) {
+        // 生產環境：檢查健康狀態和功能
+        jamendoConfigured.value = config.status === 'healthy' && 
+                                config.features?.jamendo_integration === true
+        
+        console.log('✅ Railway 健康檢查通過:', {
+          status: config.status,
+          environment: config.environment,
+          jamendo: config.features?.jamendo_integration
+        })
+      } else {
+        // 開發環境：檢查詳細配置
+        jamendoConfigured.value = config.available && config.status === 'configured'
+        
+        console.log('✅ 開發環境 Jamendo 配置:', config)
+      }
+      
+      return jamendoConfigured.value
     } catch (error) {
       console.error('❌ Jamendo 配置檢查失敗:', error)
       jamendoConfigured.value = false
@@ -158,14 +183,22 @@ export function useJamendo() {
   }
 
   // API 請求封裝
-  const jamendoAPI = async (endpoint, params = {}) => {
+   const jamendoAPI = async (endpoint, params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString()
       const url = `${API_BASE}/api/jamendo/${endpoint}${queryString ? '?' + queryString : ''}`
       
-      console.log('🔄 Jamendo API 請求:', endpoint, params)
+      if (!import.meta.env.PROD) {
+        console.log('🔄 Railway Jamendo API 請求:', endpoint, params)
+      }
       
-      const response = await fetch(url)
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'same-origin'  // Railway 同域請求
+      })
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -177,10 +210,15 @@ export function useJamendo() {
         throw new Error(data.error)
       }
       
-      console.log('✅ Jamendo API 響應:', data)
+      if (!import.meta.env.PROD) {
+        console.log('✅ Railway Jamendo API 響應:', data)
+      }
+      
       return data
     } catch (error) {
-      console.error('❌ Jamendo API 請求失敗:', error)
+      if (!import.meta.env.PROD) {
+        console.error('❌ Railway Jamendo API 請求失敗:', error)
+      }
       lastError.value = error.message
       throw error
     }
@@ -723,10 +761,15 @@ export function useJamendo() {
       isJamendoConnected.value = true
       lastError.value = ''
       playbackState.value = 'idle'
-      console.log('✅ Jamendo 連接成功')
+    if (import.meta.env.PROD) {
+        console.log('✅ Railway Jamendo 連接成功')
+      } else {
+        console.log('✅ 開發環境 Jamendo 連接成功')
+      }
+      
       return true
     } catch (error) {
-      console.error('❌ 連接失敗:', error)
+      console.error('❌ Railway Jamendo 連接失敗:', error)
       lastError.value = '連接失敗: ' + error.message
       playbackState.value = 'error'
       return false
@@ -784,15 +827,18 @@ export function useJamendo() {
 
   // 生命週期
   onMounted(async () => {
-    console.log('🚀 useJamendo 組件已掛載')
+    if (!import.meta.env.PROD) {
+      console.log('🚀 useJamendo 組件已掛載 (Railway 環境)')
+    }
     
     const configOk = await checkConfig()
     if (configOk) {
       await connectJamendo()
-    } else {
+    } else if (!import.meta.env.PROD) {
       console.log('💡 提示：Jamendo 需要正確配置才能使用')
     }
   })
+
 
   onUnmounted(() => {
     try {
