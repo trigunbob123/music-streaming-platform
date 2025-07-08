@@ -1,13 +1,19 @@
+
 import axios from 'axios'
 
-// 🔧 動態 API 基礎 URL 配置
+// 🚂 Railway 部署 API 配置
 const getApiBaseURL = () => {
-  const hostname = window.location.hostname
+  // 檢查是否在 Railway 生產環境
+  if (import.meta.env.PROD) {
+    // 生產環境：前後端在同一個域名，使用相對路徑
+    return window.location.origin
+  }
   
+  // 開發環境：後端在不同端口
+  const hostname = window.location.hostname
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://127.0.0.1:8000'
   } else {
-    // 使用當前主機的 IP，但改為 8000 端口
     return `http://${hostname}:8000`
   }
 }
@@ -23,18 +29,20 @@ const apiClient = axios.create({
 })
 
 // 調試信息
+console.log('🚂 部署環境:', import.meta.env.PROD ? 'Railway Production' : 'Development')
 console.log('🌐 API Base URL:', getApiBaseURL())
-console.log('🌐 Current Hostname:', window.location.hostname)
+console.log('🌐 Current Origin:', window.location.origin)
 
 // 請求攔截器
 apiClient.interceptors.request.use(
   (config) => {
-    console.log('📤 發送 API 請求:', {
-      method: config.method.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullURL: config.baseURL + config.url
-    })
+    if (!import.meta.env.PROD) {
+      console.log('📤 API 請求:', {
+        method: config.method.toUpperCase(),
+        url: config.url,
+        fullURL: config.baseURL + config.url
+      })
+    }
     return config
   },
   (error) => {
@@ -46,87 +54,73 @@ apiClient.interceptors.request.use(
 // 響應攔截器
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('✅ API 響應成功:', {
-      status: response.status,
-      url: response.config.url,
-      dataLength: Array.isArray(response.data?.results) 
-        ? response.data.results.length 
-        : Array.isArray(response.data) 
-          ? response.data.length 
-          : 'N/A',
-      data: response.data
-    })
+    if (!import.meta.env.PROD) {
+      console.log('✅ API 響應成功:', {
+        status: response.status,
+        url: response.config.url,
+        dataLength: response.data?.results?.length || response.data?.length || 'N/A'
+      })
+    }
     return response
   },
   (error) => {
-    console.error('❌ API 請求錯誤詳情:', {
-      message: error.message,
-      code: error.code,
+    // 生產環境簡化錯誤日誌
+    const errorInfo = {
       status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
       url: error.config?.url,
-      method: error.config?.method,
-      baseURL: error.config?.baseURL
-    })
+      message: error.message
+    }
     
-    // 根據錯誤類型提供更詳細的錯誤信息
-    if (error.code === 'ERR_NETWORK') {
-      console.error('🔗 網路連接錯誤: 無法連接到後端服務器')
-      console.error(`請確認後端服務器是否在 ${getApiBaseURL()} 運行`)
-      console.error('可能的解決方案:')
-      console.error('1. 檢查後端服務器是否啟動')
-      console.error('2. 檢查防火牆設置')
-      console.error('3. 檢查網絡連接')
-    } else if (error.code === 'ECONNREFUSED') {
-      console.error('🚫 連接被拒絕: 後端服務器可能未啟動')
-    } else if (error.response?.status === 404) {
-      console.error('🔍 API 端點不存在:', error.config?.url)
-    } else if (error.response?.status === 500) {
-      console.error('🐛 服務器內部錯誤')
+    if (import.meta.env.PROD) {
+      console.error('❌ API 錯誤:', errorInfo)
+    } else {
+      console.error('❌ API 請求錯誤詳情:', {
+        ...errorInfo,
+        code: error.code,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        method: error.config?.method,
+        baseURL: error.config?.baseURL
+      })
+      
+      // 開發環境錯誤提示
+      if (error.code === 'ERR_NETWORK') {
+        console.error('🔗 網路連接錯誤: 請確認後端服務器是否在運行')
+      }
     }
     
     return Promise.reject(error)
   }
 )
 
-// ✅ 添加 testConnection 函數
+// 連接測試函數
 export const testConnection = async () => {
   try {
-    console.log('🔄 開始後端連接測試...')
+    console.log('🔄 開始 Railway 連接測試...')
     
-    // 首先測試基本連接
-    const healthResponse = await apiClient.get('/api/music/songs/', {
-      timeout: 10000 // 10秒超時
+    const healthResponse = await apiClient.get('/api/health/', {
+      timeout: 10000
     })
     
-    console.log('🎉 後端連接測試成功:', {
+    console.log('🎉 Railway 連接測試成功:', {
       status: healthResponse.status,
-      songsCount: healthResponse.data?.results?.length || healthResponse.data?.length || 0
+      environment: healthResponse.data?.environment,
+      features: healthResponse.data?.features
     })
     
     return true
   } catch (error) {
-    console.error('❌ 後端連接測試失敗:', {
+    console.error('❌ Railway 連接測試失敗:', {
       message: error.message,
       code: error.code,
       status: error.response?.status
     })
     
-    // 嘗試其他可能的端點
-    try {
-      console.log('🔄 嘗試管理面板連接...')
-      const adminResponse = await apiClient.get('/admin/', { timeout: 5000 })
-      console.log('✅ 管理面板可訪問，但 API 端點可能有問題')
-      return false
-    } catch (adminError) {
-      console.error('❌ 管理面板也無法訪問，服務器可能未啟動')
-      return false
-    }
+    return false
   }
 }
 
-// 🔧 改進的錯誤處理包裝器
+// 錯誤處理包裝器
 const handleApiCall = async (apiCall, fallbackData = []) => {
   try {
     const response = await apiCall()
@@ -136,7 +130,9 @@ const handleApiCall = async (apiCall, fallbackData = []) => {
       error: null
     }
   } catch (error) {
-    console.error('API 調用失敗:', error)
+    if (!import.meta.env.PROD) {
+      console.error('API 調用失敗:', error)
+    }
     return {
       success: false,
       data: fallbackData,
@@ -150,7 +146,7 @@ export const musicAPI = {
   // 測試連接
   testConnection,
   
-  // 獲取所有歌曲（帶錯誤處理）
+  // 獲取所有歌曲
   getAllSongs: async () => {
     console.log('📀 請求所有歌曲...')
     return handleApiCall(
@@ -204,12 +200,14 @@ export const musicAPI = {
     )
   },
   
-  // 🔧 新增：直接API調用（用於調試）
+  // 直接 API 請求
   rawRequest: async (endpoint) => {
     console.log('🔧 直接 API 請求:', endpoint)
     try {
       const response = await apiClient.get(endpoint)
-      console.log('✅ 直接請求成功:', response.data)
+      if (!import.meta.env.PROD) {
+        console.log('✅ 直接請求成功:', response.data)
+      }
       return response
     } catch (error) {
       console.error('❌ 直接請求失敗:', error)
@@ -218,17 +216,13 @@ export const musicAPI = {
   }
 }
 
-// 🔧 導出 API 客戶端以供其他用途
+// 導出
 export { apiClient, getApiBaseURL }
-
-// 🔧 導出默認實例
 export default apiClient
 
-// 🧪 開發環境下的額外調試工具
-if (process.env.NODE_ENV === 'development') {
-  // 將 API 客戶端暴露到全局，方便在瀏覽器控制台調試
+// 開發環境調試工具
+if (!import.meta.env.PROD) {
   window.musicAPI = musicAPI
   window.apiClient = apiClient
-  
-  console.log('🔧 開發模式: API 調試工具已暴露到 window.musicAPI 和 window.apiClient')
+  console.log('🔧 開發模式: API 調試工具已暴露')
 }

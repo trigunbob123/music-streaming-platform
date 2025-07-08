@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "cd frontend && npm install && npm run build",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python manage.py runserver",
+    "install:frontend": "cd frontend && npm install",
+    "install:backend": "cd backend && pip install -r requirements.txt",
     "preview": "vite preview",
     "test:unit": "vitest",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
@@ -17,7 +21,7 @@
     "build:dev": "vite build --mode development",
     "serve": "vite preview --port 4173",
     "clean": "rm -rf dist node_modules/.vite",
-    "setup": "npm install && npm run lint"
+    "setup": "npm run install:frontend && npm run install:backend"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
@@ -46,5 +50,8 @@
     "tailwindcss": "^4.1.10",
     "vite": "^6.3.5",
     "vitest": "^3.2.4"
-  }
+  },
+  "workspaces": [
+    "frontend"
+  ]
 }
