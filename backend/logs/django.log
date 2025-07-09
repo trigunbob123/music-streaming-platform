@@ -854,3 +854,5 @@ INFO 2025-07-07 16:11:21,825 views 1640 9468 從緩存返回數據: tracks
 INFO 2025-07-07 16:11:21,827 basehttp 1640 9468 "GET /api/jamendo/tracks/tag/?tag=lounge&limit=15 HTTP/1.1" 200 60273
 INFO 2025-07-07 16:11:21,840 views 1640 9468 從緩存返回數據: tracks
 INFO 2025-07-07 16:11:21,843 basehttp 1640 9468 "GET /api/jamendo/tracks/tag/?tag=lounge&limit=15 HTTP/1.1" 200 60273
+INFO 2025-07-09 11:36:45,103 autoreload 26576 7304 Watching for file changes with StatReloader
+INFO 2025-07-09 11:36:56,855 basehttp 26576 17736 "GET / HTTP/1.1" 200 264

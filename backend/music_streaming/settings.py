@@ -166,9 +166,9 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # 前端靜態文件
-STATICFILES_DIRS = [
-    BASE_DIR.parent / 'frontend' / 'dist' / 'assets',
-]
+STATICFILES_DIRS = []
+if (BASE_DIR.parent / 'frontend' / 'dist' / 'assets').exists():
+    STATICFILES_DIRS.append(BASE_DIR.parent / 'frontend' / 'dist' / 'assets')
 
 # WhiteNoise 設定（用於提供靜態文件）
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -302,6 +302,7 @@ if IS_RAILWAY:
         r"^https://.*\.railway\.app$",
         r"^https://.*\.up\.railway\.app$",
     ]
+    CORS_ALLOW_ALL_ORIGINS = False
 else:
     # 開發環境 CORS 設定
     CORS_ALLOWED_ORIGINS = [
@@ -310,7 +311,7 @@ else:
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
-
+    CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # 日誌設定
 if IS_RAILWAY:
@@ -398,3 +399,9 @@ if IS_PRODUCTION:
     X_FRAME_OPTIONS = 'DENY'
     SECURE_HSTS_SECONDS = 3600
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+
+if not IS_RAILWAY:
+    # 只在本地環境創建日誌目錄
+    LOGS_DIR = BASE_DIR / 'logs'
+    if not LOGS_DIR.exists():
+        LOGS_DIR.mkdir(exist_ok=True)

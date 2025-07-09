@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "DDM360 音樂串流平台 - Railway 部署版本",
   "scripts": {
-    "build": "echo '🔨 Building frontend...' && cd frontend && npm ci && npm run build && echo '✅ Frontend build complete'",
+    "build": "cd frontend && npm ci && npm run build",
     "start": "cd backend && python manage.py runserver 0.0.0.0:8000",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "cd frontend && npm run dev",
