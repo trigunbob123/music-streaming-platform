@@ -1,39 +1,6 @@
-# railway.toml
 [build]
-builder = "NIXPACKS"
-buildCommand = "echo 'Building frontend and backend...'"
-
-[deploy]
-startCommand = """
-echo "🚀 Starting deployment..." &&
-echo "📦 Installing frontend dependencies..." &&
-cd frontend && npm ci &&
-echo "🔨 Building frontend..." &&
-npm run build &&
-echo "🐍 Setting up backend..." &&
-cd ../backend &&
-echo "📋 Running Django migrations..." &&
-python manage.py migrate &&
-echo "📁 Collecting static files..." &&
-python manage.py collectstatic --noinput &&
-echo "🎵 Starting Django server..." &&
-gunicorn music_streaming.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
-"""
-
-healthcheckPath = "/api/health/"
-healthcheckTimeout = 300
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
+builder = "dockerfile"
 
 [env]
-# Python 環境變數
-PYTHONPATH = "/app/backend"
 DJANGO_SETTINGS_MODULE = "music_streaming.settings"
-PYTHONUNBUFFERED = "1"
-
-# Node.js 環境變數
-NODE_ENV = "production"
-NPM_CONFIG_PRODUCTION = "false"
-
-# 應用程式變數
-PORT = "8000"
+PYTHONPATH = "/app/backend"

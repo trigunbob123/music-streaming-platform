@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "cd frontend && npm install && npm run build",
+    "build": "vite build",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && python manage.py runserver",
     "install:frontend": "cd frontend && npm install",
