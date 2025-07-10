@@ -31,3 +31,5 @@ EXPOSE $PORT
 # 使用 ENTRYPOINT + CMD 組合
 ENTRYPOINT ["bash", "-c"]
 CMD ["cd backend && gunicorn music_streaming.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"]
+
+RUN mkdir -p /app/backend/staticfiles
