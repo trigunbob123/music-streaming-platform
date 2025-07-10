@@ -1616,3 +1616,4 @@ INFO 2025-07-10 10:45:14,660 views 11024 23528 從緩存返回數據: tracks
 INFO 2025-07-10 10:45:14,663 basehttp 11024 23528 "GET /api/jamendo/tracks/latest/?limit=30 HTTP/1.1" 200 147574
 INFO 2025-07-10 10:48:51,294 views 11024 23528 從緩存返回數據: tracks
 INFO 2025-07-10 10:48:51,297 basehttp 11024 23528 "GET /api/jamendo/tracks/popular/?limit=30 HTTP/1.1" 200 121492
+INFO 2025-07-10 12:01:25,504 autoreload 4012 28068 Watching for file changes with StatReloader
