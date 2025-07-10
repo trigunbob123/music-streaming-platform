@@ -720,6 +720,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.flex {
+  align-items: stretch; /* 讓子元素高度一致 */
+}
 /* 響應式設計 */
 @media (max-width: 1280px) {
   .grid-cols-6 {

@@ -15,8 +15,12 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 
-defineProps({
+const props = defineProps({
   isLoadingTrack: {
+    type: Boolean,
+    required: true
+  },
+  isPlaying: {
     type: Boolean,
     required: true
   }
@@ -24,7 +28,7 @@ defineProps({
 
 // 音頻均衡器相關
 const equalizerBars = ref([])
-const audioFrequencyData = ref(Array(16).fill(0.2))
+const audioFrequencyData = ref(Array(16).fill(0.1))
 
 // 獲取頻率組
 const getFrequencyGroup = (index) => {
@@ -33,8 +37,18 @@ const getFrequencyGroup = (index) => {
   return 'high'                     // 高音: 11-15
 }
 
-// 改進的音頻均衡器動態效果
+// 改進的音頻均衡器動態效果 - 只在播放時運行
 const simulateRealisticAudioSpectrum = () => {
+  // 🔧 重要：只有在真正播放音樂時才產生動態效果
+  if (!props.isPlaying) {
+    // 如果沒在播放，讓均衡器緩慢衰減到靜止狀態
+    audioFrequencyData.value = audioFrequencyData.value.map(value => 
+      Math.max(0.1, value * 0.92)
+    )
+    updateEqualizerBars()
+    return
+  }
+  
   const currentTimeMs = Date.now()
   const beatPeriod = 600
   const beatPhase = (currentTimeMs % beatPeriod) / beatPeriod
@@ -88,41 +102,50 @@ const updateEqualizerBars = () => {
     
     bar.style.height = `${height}%`
     
-    if (intensity > 0.8) {
-      if (freqGroup === 'bass') {
-        bar.style.background = 'linear-gradient(to top, #ff4500, #ff6347, #ffa500)'
-      } else if (freqGroup === 'mid') {
-        bar.style.background = 'linear-gradient(to top, #ffa500, #ffff00, #adff2f)'
+    // 🔧 根據播放狀態調整顏色
+    if (props.isPlaying) {
+      // 播放時的動態顏色
+      if (intensity > 0.8) {
+        if (freqGroup === 'bass') {
+          bar.style.background = 'linear-gradient(to top, #ff4500, #ff6347, #ffa500)'
+        } else if (freqGroup === 'mid') {
+          bar.style.background = 'linear-gradient(to top, #ffa500, #ffff00, #adff2f)'
+        } else {
+          bar.style.background = 'linear-gradient(to top, #ffff00, #ffffff, #87ceeb)'
+        }
+        bar.style.boxShadow = `0 0 ${intensity * 10}px rgba(255, 165, 0, ${intensity * 0.8})`
+      } else if (intensity > 0.5) {
+        if (freqGroup === 'bass') {
+          bar.style.background = 'linear-gradient(to top, #ff6b35, #ff8c42, #ffa449)'
+        } else if (freqGroup === 'mid') {
+          bar.style.background = 'linear-gradient(to top, #f7931e, #ffab00, #ffc107)'
+        } else {
+          bar.style.background = 'linear-gradient(to top, #ffcc02, #ffeb3b, #fff200)'
+        }
+        bar.style.boxShadow = `0 0 ${intensity * 6}px rgba(255, 140, 0, ${intensity * 0.5})`
       } else {
-        bar.style.background = 'linear-gradient(to top, #ffff00, #ffffff, #87ceeb)'
+        if (freqGroup === 'bass') {
+          bar.style.background = 'linear-gradient(to top, #8b4513, #cd853f)'
+        } else if (freqGroup === 'mid') {
+          bar.style.background = 'linear-gradient(to top, #daa520, #f0e68c)'
+        } else {
+          bar.style.background = 'linear-gradient(to top, #f0e68c, #ffffe0)'
+        }
+        bar.style.boxShadow = 'none'
       }
-      bar.style.boxShadow = `0 0 ${intensity * 10}px rgba(255, 165, 0, ${intensity * 0.8})`
-    } else if (intensity > 0.5) {
+      
       if (freqGroup === 'bass') {
-        bar.style.background = 'linear-gradient(to top, #ff6b35, #ff8c42, #ffa449)'
-      } else if (freqGroup === 'mid') {
-        bar.style.background = 'linear-gradient(to top, #f7931e, #ffab00, #ffc107)'
+        bar.style.filter = `saturate(${1 + intensity * 0.5})`
+      } else if (freqGroup === 'high') {
+        bar.style.filter = `brightness(${1 + intensity * 0.3}) contrast(${1 + intensity * 0.2})`
       } else {
-        bar.style.background = 'linear-gradient(to top, #ffcc02, #ffeb3b, #fff200)'
+        bar.style.filter = `hue-rotate(${intensity * 20}deg)`
       }
-      bar.style.boxShadow = `0 0 ${intensity * 6}px rgba(255, 140, 0, ${intensity * 0.5})`
     } else {
-      if (freqGroup === 'bass') {
-        bar.style.background = 'linear-gradient(to top, #8b4513, #cd853f)'
-      } else if (freqGroup === 'mid') {
-        bar.style.background = 'linear-gradient(to top, #daa520, #f0e68c)'
-      } else {
-        bar.style.background = 'linear-gradient(to top, #f0e68c, #ffffe0)'
-      }
+      // 暫停時的靜態顏色
+      bar.style.background = 'linear-gradient(to top, #666, #999)'
       bar.style.boxShadow = 'none'
-    }
-    
-    if (freqGroup === 'bass') {
-      bar.style.filter = `saturate(${1 + intensity * 0.5})`
-    } else if (freqGroup === 'high') {
-      bar.style.filter = `brightness(${1 + intensity * 0.3}) contrast(${1 + intensity * 0.2})`
-    } else {
-      bar.style.filter = `hue-rotate(${intensity * 20}deg)`
+      bar.style.filter = 'none'
     }
   })
 }
@@ -133,21 +156,25 @@ let equalizerInterval = null
 const startEqualizerAnimation = () => {
   if (equalizerInterval) clearInterval(equalizerInterval)
   equalizerInterval = setInterval(simulateRealisticAudioSpectrum, 80)
+  console.log('🎵 均衡器動畫已啟動')
 }
 
 const stopEqualizerAnimation = () => {
   if (equalizerInterval) {
     clearInterval(equalizerInterval)
     equalizerInterval = null
+    console.log('⏸️ 均衡器動畫已停止')
   }
   
+  // 快速衰減到靜止狀態
   const fadeOut = () => {
-    audioFrequencyData.value = audioFrequencyData.value.map(value => value * 0.9)
+    audioFrequencyData.value = audioFrequencyData.value.map(value => value * 0.85)
     updateEqualizerBars()
     
-    if (Math.max(...audioFrequencyData.value) > 0.05) {
+    if (Math.max(...audioFrequencyData.value) > 0.15) {
       setTimeout(fadeOut, 50)
     } else {
+      // 設置為靜止狀態
       audioFrequencyData.value.fill(0.1)
       equalizerBars.value.forEach(bar => {
         if (bar) {
@@ -162,6 +189,16 @@ const stopEqualizerAnimation = () => {
   fadeOut()
 }
 
+// 🔧 監聽播放狀態變化
+watch(() => props.isPlaying, (playing) => {
+  console.log('🎵 播放狀態變化:', playing ? '播放中' : '已暫停')
+  if (playing) {
+    startEqualizerAnimation()
+  } else {
+    stopEqualizerAnimation()
+  }
+}, { immediate: true })
+
 // 對外暴露方法
 defineExpose({
   startEqualizerAnimation,
@@ -169,7 +206,22 @@ defineExpose({
 })
 
 onMounted(() => {
-  startEqualizerAnimation()
+  // 🔧 只有在真正播放時才啟動動畫
+  if (props.isPlaying) {
+    startEqualizerAnimation()
+  } else {
+    // 設置初始靜止狀態
+    setTimeout(() => {
+      equalizerBars.value.forEach(bar => {
+        if (bar) {
+          bar.style.height = '8%'
+          bar.style.background = 'linear-gradient(to top, #666, #999)'
+          bar.style.boxShadow = 'none'
+          bar.style.filter = 'none'
+        }
+      })
+    }, 100)
+  }
 })
 
 onUnmounted(() => {

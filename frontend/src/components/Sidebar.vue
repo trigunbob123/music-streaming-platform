@@ -24,7 +24,7 @@
     <nav class="space-y-4 mb-8">
       <button 
         @click="$emit('set-mode', 'random')" 
-        class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors"
+        class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
         :class="{ 'bg-gray-700': currentMode === 'random' }"
       >
         <font-awesome-icon icon="random" class="mr-3" />
@@ -32,7 +32,7 @@
       </button>
       <button 
         @click="$emit('set-mode', 'latest')" 
-        class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors"
+        class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
         :class="{ 'bg-gray-700': currentMode === 'latest' }"
       >
         <font-awesome-icon icon="music" class="mr-3" />
@@ -40,7 +40,7 @@
       </button>
       <button 
         @click="$emit('set-mode', 'popular')" 
-        class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors"
+        class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
         :class="{ 'bg-gray-700': currentMode === 'popular' }"
       >
         <font-awesome-icon icon="fire" class="mr-3" />
@@ -48,10 +48,10 @@
       </button>
       <button 
         @click="$emit('set-mode', 'favorites')" 
-        class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors"
+        class="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
         :class="{ 'bg-gray-700': currentMode === 'favorites' }"
       >
-        <font-awesome-icon icon="heart" class="mr-3" />
+        <font-awesome-icon icon="heart" class="mr-3 cursor-pointer" />
         我的收藏
       </button>
     </nav>
@@ -79,7 +79,9 @@ defineEmits(['connect-jamendo', 'set-mode'])
 
 <style scoped>
 .sidebar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #000000 0%, #764ba2 100%);
+  min-height: 100vh;
+  height: auto;
 }
 
 .w-25 {

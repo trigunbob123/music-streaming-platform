@@ -1,8 +1,15 @@
 <template>
   <div class="p-4 bg-gradient-to-r from-blue-900 to-black-600 rounded-lg">
-    <div class="flex items-center space-x-4 flex-wrap">
+    <!-- 標題區域 -->
+    <div class="mb-0">
+      <span class="text-white text-sm font-medium">🎶自選混和曲風與數量</span>
+    </div>
+    
+    <!-- 控制區域 - 確保所有元素高度一致 -->
+    <div class="flex items-end space-x-4 flex-wrap">
       <!-- 第一個曲風按鈕組 -->
       <div class="flex items-center space-x-2">
+        <!-- 曲風下拉按鈕 -->
         <div class="relative">
           <button 
             @click="toggleGenreDropdown(0)" 
@@ -23,12 +30,14 @@
             </div>
           </div>
         </div>
+
+        <!-- 數量下拉按鈕 -->
         <div class="relative">
           <button 
             @click="toggleCountDropdown(0)" 
             class="count-selector-btn px-4 py-3 bg-blue-300 text-black rounded-lg font-bold hover:bg-blue-100 flex items-center space-x-2 cursor-pointer"
           >
-            <span>{{ playlistConfig[0].count }}</span>
+            <span>{{ playlistConfig[0].count }}首</span>
             <font-awesome-icon icon="chevron-down" class="text-sm" />
           </button>
           <!-- 浮動式數字下拉選單 -->
@@ -39,7 +48,7 @@
               @click="selectCount(0, count)" 
               class="dropdown-item"
             >
-              {{ count }}
+              {{ count }}首歌曲
             </div>
           </div>
         </div>
@@ -74,7 +83,7 @@
             @click="toggleCountDropdown(1)" 
             class="count-selector-btn px-4 py-3 bg-blue-300 text-black rounded-lg font-bold hover:bg-blue-100 flex items-center space-x-2 cursor-pointer"
           >
-            <span>{{ playlistConfig[1].count }}</span>
+            <span>{{ playlistConfig[1].count }}首</span>
             <font-awesome-icon icon="chevron-down" class="text-sm" />
           </button>
           <div v-if="countDropdownOpen[1]" class="floating-dropdown">
@@ -84,7 +93,7 @@
               @click="selectCount(1, count)" 
               class="dropdown-item"
             >
-              {{ count }}
+              {{ count }}首歌曲
             </div>
           </div>
         </div>
@@ -119,7 +128,7 @@
             @click="toggleCountDropdown(2)" 
             class="count-selector-btn px-4 py-3 bg-blue-300 text-black rounded-lg font-bold hover:bg-blue-100 flex items-center space-x-2 cursor-pointer"
           >
-            <span>{{ playlistConfig[2].count }}</span>
+            <span>{{ playlistConfig[2].count }}首</span>
             <font-awesome-icon icon="chevron-down" class="text-sm" />
           </button>
           <div v-if="countDropdownOpen[2]" class="floating-dropdown">
@@ -129,7 +138,7 @@
               @click="selectCount(2, count)" 
               class="dropdown-item"
             >
-              {{ count }}
+              {{ count }}首歌曲
             </div>
           </div>
         </div>
@@ -147,18 +156,20 @@
         <span v-else>播放</span>
       </button>
 
-      <!-- 混和曲風播放清單狀態顯示 -->
-      <div 
-        v-if="customPlaylistStatus.isActive && currentMode === 'custom'" 
-        class="custom-playlist-status bg-blue-900/50 px-4 py-2 rounded-lg"
-      >
-        <div class="text-xs text-blue-200 mb-1">混和曲風播放清單</div>
-        <div class="text-sm font-medium text-white">
-          第{{ customPlaylistStatus.currentGroup }}組 {{ customPlaylistStatus.currentGenre }} 
-          ({{ customPlaylistStatus.currentInGroup }}/{{ customPlaylistStatus.totalInGroup }})
-        </div>
-        <div class="text-xs text-blue-300 mt-1">
-          總進度: {{ customPlaylistStatus.overallProgress }}/{{ customPlaylistStatus.totalTracks }}
+      <!-- 🔧 修改：固定高度的狀態顯示區域 -->
+      <div class="status-container">
+        <div 
+          v-if="customPlaylistStatus.isActive && currentMode === 'custom'" 
+          class="custom-playlist-status bg-blue-900/50 px-4 py-2 rounded-lg"
+        >
+          <div class="text-xs text-blue-200 mb-1">混和曲風播放清單</div>
+          <div class="text-sm font-medium text-white">
+            第{{ customPlaylistStatus.currentGroup }}組 {{ customPlaylistStatus.currentGenre }} 
+            ({{ customPlaylistStatus.currentInGroup }}/{{ customPlaylistStatus.totalInGroup }})
+          </div>
+          <div class="text-xs text-blue-300 mt-1">
+            總進度: {{ customPlaylistStatus.overallProgress }}/{{ customPlaylistStatus.totalTracks }}
+          </div>
         </div>
       </div>
     </div>
@@ -255,6 +266,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 🔧 新增：固定高度的狀態容器 */
+.status-container {
+  min-width: 160px;
+  min-height: 68px; /* 固定最小高度，確保空間預留 */
+  display: flex;
+  align-items: center;
+}
+
 /* 浮動式下拉選單樣式 */
 .floating-dropdown {
   position: absolute;
@@ -330,6 +349,10 @@ onUnmounted(() => {
 
 /* 響應式設計 */
 @media (max-width: 1024px) {
+  .status-container {
+    min-height: 60px;
+  }
+  
   .custom-playlist-status {
     min-width: 150px;
     max-width: 200px;
@@ -355,6 +378,10 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  .status-container {
+    min-height: 55px;
+  }
+  
   /* 混和曲風播放清單在小屏幕上的響應式調整 */
   .flex-wrap {
     flex-wrap: wrap;

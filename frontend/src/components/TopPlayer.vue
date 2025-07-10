@@ -17,6 +17,7 @@
         <!-- 音頻均衡器視覺效果 -->
         <AudioVisualizer 
           :is-loading-track="isLoadingTrack"
+          :is-playing="isPlaying"
         />
         
         <!-- 播放控制按鈕 -->
