@@ -50,3 +50,6 @@ dist/
 Thumbs.db
 
 backend/logs/*.log
+**/logs/*.log
+*.log
+backend/logs/django.log
