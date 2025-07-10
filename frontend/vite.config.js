@@ -1,10 +1,11 @@
 // frontend/vite.config.js
 import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [tailwindcss(), vue()],
   server: {
     port: 3000,        // 改回 3000 端口
     host: '127.0.0.1', // 使用 127.0.0.1 而不是 0.0.0.0
@@ -33,7 +34,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'), 
     },
   },
-  css: {
-    postcss: path.resolve(__dirname, 'postcss.config.cjs'), 
-  },
+  // css: {
+  //   postcss: path.resolve(__dirname, 'postcss.config.cjs'), 
+  // },
 })

@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-screen bg-gray-100">
     <!-- 左側邊欄 -->
-    <div class="w-64 sidebar text-white p-4">
+    <div class="w-64 sidebar text-white p-10">
       <div class="flex items-center justify-between mb-8">
         <!-- 只顯示 logo，移除連接狀態 -->
         <div class="flex items-center">
@@ -82,9 +82,13 @@
               </div>
             </div>
             <!-- 歌曲信息 -->
-            <div class="min-w-0 flex-1">
-              <p class="font-medium text-lg truncate" :title="currentTrack.name">{{ currentTrack.name }}</p>
-              <p class="text-sm text-gray-300 truncate" :title="currentTrack.artist_name">
+            <div class="min-w-0 flex-1 max-w-xs">
+              <p class="font-medium text-lg leading-tight max-h-12 overflow-hidden" 
+                 :title="currentTrack.name"
+                 style="line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                {{ currentTrack.name }}
+              </p>
+              <p class="text-sm text-gray-300 truncate mt-1" :title="currentTrack.artist_name">
                 {{ currentTrack.artist_name }}
               </p>
               <p class="text-xs text-orange-400 truncate" v-if="currentTrack.album_name" :title="currentTrack.album_name">
@@ -101,18 +105,6 @@
 
           <!-- 右側：播放控制和音量 -->
           <div class="flex items-center space-x-4 flex-shrink-0">
-            <!-- 🆕 修改：只在自定義播放清單模式下顯示狀態 -->
-            <div v-if="customPlaylistStatus.isActive && currentMode === 'custom'" class="custom-playlist-status bg-blue-900/50 px-4 py-2 rounded-lg">
-              <div class="text-xs text-blue-200 mb-1">混和曲風播放清單</div>
-              <div class="text-sm font-medium text-white">
-                第{{ customPlaylistStatus.currentGroup }}組 {{ customPlaylistStatus.currentGenre }} 
-                ({{ customPlaylistStatus.currentInGroup }}/{{ customPlaylistStatus.totalInGroup }})
-              </div>
-              <div class="text-xs text-blue-300 mt-1">
-                總進度: {{ customPlaylistStatus.overallProgress }}/{{ customPlaylistStatus.totalTracks }}
-              </div>
-            </div>
-            
             <!-- 載入指示器 -->
             <div v-if="isLoadingTrack" class="flex items-center text-orange-400">
               <font-awesome-icon icon="spinner" class="animate-spin mr-2" />
@@ -187,131 +179,145 @@
         </div>
       </div>
 
-      <!-- 搜尋欄 -->
-      <div class="p-2 pb-0" v-if="isJamendoConnected">
+      <!-- 搜尋欄和混和曲風播放清單控制 -->
+      <div v-if="isJamendoConnected" class="p-2 pb-0 space-y-4">
+        <!-- 搜尋欄 -->
         <div class="relative inline-block w-full">
           <input v-model="searchQuery" @input="debouncedSearch" 
                  placeholder="🔎搜尋歌曲、藝人或專輯..." 
-                 class="w-full py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                 class="w-full py-1 my-0 px-4 border border-black rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+ />
         </div>
-      </div>
 
-      <!-- 新增：音樂播放清單控制 -->
-      <div v-if="isJamendoConnected" class="p-4 bg-gradient-to-r from-blue-600 to-purple-600">
-        <div class="flex items-center space-x-4">
-          <!-- 第一個曲風按鈕組 -->
-          <div class="flex items-center space-x-2">
-            <div class="relative">
-              <button @click="toggleGenreDropdown(0)" 
-                      class="genre-selector-btn px-6 py-3 bg-blue-500 text-blue rounded-lg font-semibold hover:bg-blue-600 flex items-center space-x-2 cursor-pointer">
-                <span>{{ playlistConfig[0].genre }}</span>
-                <font-awesome-icon icon="chevron-down" class="text-sm" />
-              </button>
-              <!-- 🔧 修改：浮動式曲風下拉選單 -->
-              <div v-if="genreDropdownOpen[0]" class="floating-dropdown">
-                <div v-for="genre in availableGenres" :key="genre.value" 
-                     @click="selectGenre(0, genre)" 
-                     class="dropdown-item">
-                  {{ genre.label }}
+        <!-- 🆕 修改：音樂播放清單控制 -->
+        <div class="p-4 bg-gradient-to-r from-blue-900 to-black-600 rounded-lg">
+          <div class="flex items-center space-x-4 flex-wrap">
+            <!-- 第一個曲風按鈕組 -->
+            <div class="flex items-center space-x-2">
+              <div class="relative">
+                <button @click="toggleGenreDropdown(0)" 
+                        class="genre-selector-btn px-6 py-3 bg-blue-100 text-blue rounded-lg font-semibold hover:bg-blue-300 flex items-center space-x-2 cursor-pointer">
+                  <span>{{ playlistConfig[0].genre }}</span>
+                  <font-awesome-icon icon="chevron-down" class="text-sm" />
+                </button>
+                <!-- 🔧 修改：浮動式曲風下拉選單 -->
+                <div v-if="genreDropdownOpen[0]" class="floating-dropdown">
+                  <div v-for="genre in availableGenres" :key="genre.value" 
+                       @click="selectGenre(0, genre)" 
+                       class="dropdown-item">
+                    {{ genre.label }}
+                  </div>
+                </div>
+              </div>
+              <div class="relative">
+                <button @click="toggleCountDropdown(0)" 
+                        class="count-selector-btn px-4 py-3 bg-blue-300 text-black rounded-lg font-bold hover:bg-blue-100 flex items-center space-x-2 cursor-pointer">
+                  <span>{{ playlistConfig[0].count }}</span>
+                  <font-awesome-icon icon="chevron-down" class="text-sm" />
+                </button>
+                <!-- 🔧 修改：浮動式數字下拉選單 -->
+                <div v-if="countDropdownOpen[0]" class="floating-dropdown">
+                  <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
+                       @click="selectCount(0, count)" 
+                       class="dropdown-item">
+                    {{ count }}
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="relative">
-              <button @click="toggleCountDropdown(0)" 
-                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2 cursor-pointer">
-                <span>{{ playlistConfig[0].count }}</span>
-                <font-awesome-icon icon="chevron-down" class="text-sm" />
-              </button>
-              <!-- 🔧 修改：浮動式數字下拉選單 -->
-              <div v-if="countDropdownOpen[0]" class="floating-dropdown">
-                <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
-                     @click="selectCount(0, count)" 
-                     class="dropdown-item">
-                  {{ count }}
+
+            <!-- 加號 -->
+            <div class="text-white text-2xl font-bold">+</div>
+
+            <!-- 第二個曲風按鈕組 -->
+            <div class="flex items-center space-x-2">
+              <div class="relative">
+                <button @click="toggleGenreDropdown(1)" 
+                        class="genre-selector-btn px-6 py-3 bg-blue-100 text-black rounded-lg font-semibold hover:bg-blue-300 flex items-center space-x-2 cursor-pointer">
+                  <span>{{ playlistConfig[1].genre }}</span>
+                  <font-awesome-icon icon="chevron-down" class="text-sm" />
+                </button>
+                <div v-if="genreDropdownOpen[1]" class="floating-dropdown">
+                  <div v-for="genre in availableGenres" :key="genre.value" 
+                       @click="selectGenre(1, genre)" 
+                       class="dropdown-item">
+                    {{ genre.label }}
+                  </div>
                 </div>
+              </div>
+              <div class="relative">
+                <button @click="toggleCountDropdown(1)" 
+                        class="count-selector-btn px-4 py-3 bg-blue-300 text-black rounded-lg font-bold hover:bg-blue-100 flex items-center space-x-2 cursor-pointer">
+                  <span>{{ playlistConfig[1].count }}</span>
+                  <font-awesome-icon icon="chevron-down" class="text-sm" />
+                </button>
+                <div v-if="countDropdownOpen[1]" class="floating-dropdown">
+                  <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
+                       @click="selectCount(1, count)" 
+                       class="dropdown-item">
+                    {{ count }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 加號 -->
+            <div class="text-white text-2xl font-bold">+</div>
+
+            <!-- 第三個曲風按鈕組 -->
+            <div class="flex items-center space-x-2">
+              <div class="relative">
+                <button @click="toggleGenreDropdown(2)" 
+                        class="genre-selector-btn px-6 py-3 bg-blue-100 text-black rounded-lg font-semibold hover:bg-blue-300 flex items-center space-x-2 cursor-pointer">
+                  <span>{{ playlistConfig[2].genre }}</span>
+                  <font-awesome-icon icon="chevron-down" class="text-sm" />
+                </button>
+                <div v-if="genreDropdownOpen[2]" class="floating-dropdown">
+                  <div v-for="genre in availableGenres" :key="genre.value" 
+                       @click="selectGenre(2, genre)" 
+                       class="dropdown-item">
+                    {{ genre.label }}
+                  </div>
+                </div>
+              </div>
+              <div class="relative">
+                <button @click="toggleCountDropdown(2)" 
+                        class="count-selector-btn px-4 py-3 bg-blue-300 text-black rounded-lg font-bold hover:bg-blue-100 flex items-center space-x-2 cursor-pointer">
+                  <span>{{ playlistConfig[2].count }}</span>
+                  <font-awesome-icon icon="chevron-down" class="text-sm" />
+                </button>
+                <div v-if="countDropdownOpen[2]" class="floating-dropdown">
+                  <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
+                       @click="selectCount(2, count)" 
+                       class="dropdown-item">
+                    {{ count }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 播放按鈕 -->
+            <button @click="startCustomPlaylist" 
+                    :disabled="isGeneratingPlaylist"
+                    class="play-playlist-btn px-6 py-3 bg-orange-400 text-black hover:bg-gray-700 rounded-lg font-bold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 cursor-pointer">
+              <font-awesome-icon v-if="isGeneratingPlaylist" icon="spinner" class="animate-spin" />
+              <font-awesome-icon v-else icon="play" />
+              <span v-if="isGeneratingPlaylist">生成中...</span>
+              <span v-else>播放</span>
+            </button>
+
+            <!-- 🆕 新增：混和曲風播放清單狀態顯示 - 移到播放按鈕右邊 -->
+            <div v-if="customPlaylistStatus.isActive && currentMode === 'custom'" class="custom-playlist-status bg-blue-900/50 px-4 py-2 rounded-lg">
+              <div class="text-xs text-blue-200 mb-1">混和曲風播放清單</div>
+              <div class="text-sm font-medium text-white">
+                第{{ customPlaylistStatus.currentGroup }}組 {{ customPlaylistStatus.currentGenre }} 
+                ({{ customPlaylistStatus.currentInGroup }}/{{ customPlaylistStatus.totalInGroup }})
+              </div>
+              <div class="text-xs text-blue-300 mt-1">
+                總進度: {{ customPlaylistStatus.overallProgress }}/{{ customPlaylistStatus.totalTracks }}
               </div>
             </div>
           </div>
-
-          <!-- 加號 -->
-          <div class="text-white text-2xl font-bold">+</div>
-
-          <!-- 第二個曲風按鈕組 -->
-          <div class="flex items-center space-x-2">
-            <div class="relative">
-              <button @click="toggleGenreDropdown(1)" 
-                      class="genre-selector-btn px-6 py-3 bg-green-500 text-black rounded-lg font-semibold hover:bg-green-600 flex items-center space-x-2 cursor-pointer">
-                <span>{{ playlistConfig[1].genre }}</span>
-                <font-awesome-icon icon="chevron-down" class="text-sm" />
-              </button>
-              <div v-if="genreDropdownOpen[1]" class="floating-dropdown">
-                <div v-for="genre in availableGenres" :key="genre.value" 
-                     @click="selectGenre(1, genre)" 
-                     class="dropdown-item">
-                  {{ genre.label }}
-                </div>
-              </div>
-            </div>
-            <div class="relative">
-              <button @click="toggleCountDropdown(1)" 
-                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2 cursor-pointer">
-                <span>{{ playlistConfig[1].count }}</span>
-                <font-awesome-icon icon="chevron-down" class="text-sm" />
-              </button>
-              <div v-if="countDropdownOpen[1]" class="floating-dropdown">
-                <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
-                     @click="selectCount(1, count)" 
-                     class="dropdown-item">
-                  {{ count }}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 加號 -->
-          <div class="text-white text-2xl font-bold">+</div>
-
-          <!-- 第三個曲風按鈕組 -->
-          <div class="flex items-center space-x-2">
-            <div class="relative">
-              <button @click="toggleGenreDropdown(2)" 
-                      class="genre-selector-btn px-6 py-3 bg-purple-500 text-black rounded-lg font-semibold hover:bg-purple-600 flex items-center space-x-2 cursor-pointer">
-                <span>{{ playlistConfig[2].genre }}</span>
-                <font-awesome-icon icon="chevron-down" class="text-sm" />
-              </button>
-              <div v-if="genreDropdownOpen[2]" class="floating-dropdown">
-                <div v-for="genre in availableGenres" :key="genre.value" 
-                     @click="selectGenre(2, genre)" 
-                     class="dropdown-item">
-                  {{ genre.label }}
-                </div>
-              </div>
-            </div>
-            <div class="relative">
-              <button @click="toggleCountDropdown(2)" 
-                      class="count-selector-btn px-4 py-3 bg-yellow-500 text-black rounded-lg font-bold hover:bg-yellow-600 flex items-center space-x-2 cursor-pointer">
-                <span>{{ playlistConfig[2].count }}</span>
-                <font-awesome-icon icon="chevron-down" class="text-sm" />
-              </button>
-              <div v-if="countDropdownOpen[2]" class="floating-dropdown">
-                <div v-for="count in [1, 2, 3, 4, 5]" :key="count" 
-                     @click="selectCount(2, count)" 
-                     class="dropdown-item">
-                  {{ count }}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 播放按鈕 -->
-          <button @click="startCustomPlaylist" 
-                  :disabled="isGeneratingPlaylist"
-                  class="play-playlist-btn px-6 py-3 bg-orange-500 text-black hover:bg-gray-700 rounded-lg font-bold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 cursor-pointer">
-            <font-awesome-icon v-if="isGeneratingPlaylist" icon="spinner" class="animate-spin" />
-            <font-awesome-icon v-else icon="play" />
-            <span v-if="isGeneratingPlaylist">生成中...</span>
-            <span v-else>播放</span>
-          </button>
         </div>
       </div>
 
@@ -1379,54 +1385,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.sidebar {
-  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
-}
-
-.main-content {
-  background: linear-gradient(90deg, #191f30 0%, #e5e7eb 100%);
-}
-
-.progress-bar {
-  background: linear-gradient(90deg, #f97316 0%, #ea580c 100%);
-  transition: width 0.3s ease;
-  position: relative;
-  z-index: 1;
-}
-
-.music-card {
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.music-card:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-circle {
-  border-radius: 50%;
-  width: 3rem;
-  height: 3rem;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* 改進的音頻均衡器視覺效果 */
 .audio-visualizer {
   display: flex;
@@ -1474,16 +1432,19 @@ onUnmounted(() => {
   background: linear-gradient(to top, #ffcc02 0%, #ffeb3b 50%, #fff200 100%);
 }
 
+/* 播放控制按鈕 */
 .play-controls-container {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
+  margin: 0 1rem;
 }
 
+/* 撥放控制按鈕 */
 .control-button {
   border-radius: 50%;
-  width: 48px;
-  height: 48px;
+  width: 55px;
+  height: 55px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -1493,38 +1454,11 @@ onUnmounted(() => {
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  background-color: #ffffff;
 }
 
 .control-button:hover:not(:disabled) {
-  background-color: #e5e7eb;
-}
-
-.control-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.volume-slider {
-  background: #4a5568;
-  outline: none;
-}
-
-.volume-slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #f97316;
-  cursor: pointer;
-}
-
-.volume-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #f97316;
-  cursor: pointer;
-  border: none;
+  background-color: #f9bc66;
 }
 
 /* 曲風按鈕樣式 */
@@ -1550,7 +1484,7 @@ onUnmounted(() => {
 }
 
 .genre-btn-new.bg-white:hover {
-  background-color: #858585;
+  background-color: #dba8c1;
 }
 
 /* 選中狀態：粉紅色背景，白色文字 */
@@ -1563,52 +1497,18 @@ onUnmounted(() => {
   background-color: #db2777;
 }
 
+/* 收藏按鈕 */
 .heart-outline {
   color: #a2a3a3 !important;
 }
 
 .heart-outline:hover {
-  color: #6b7280 !important;
+  color: #ff00f7 !important;
 }
 
 .heart-filled {
   color: #ec4899 !important;
   filter: drop-shadow(0 0 4px rgba(236, 72, 153, 0.3));
-}
-
-@media (max-width: 1280px) {
-  .grid-cols-6 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1024px) {
-  .grid-cols-6 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .grid-cols-6 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  
-  .grid-cols-5 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  
-  .w-64 { 
-    width: 12rem; 
-  }
-  
-  .play-controls-container {
-    gap: 10px;
-  }
-  
-  .control-button {
-    width: 40px;
-    height: 40px;
-  }
 }
 
 /* 🆕 新增：浮動式下拉選單樣式 */
@@ -1628,10 +1528,11 @@ onUnmounted(() => {
   animation: dropdownFadeIn 0.15s ease-out;
 }
 
+/* 下拉內的文字 */
 .dropdown-item {
   padding: 8px 16px;
   cursor: pointer;
-  color: #0f0f0f;
+  color: #000000;
   font-weight: 500;
   transition: all 0.15s ease;
   border-bottom: 1px solid #f3f4f6;
@@ -1665,17 +1566,17 @@ onUnmounted(() => {
   }
 }
 
-/* 🆕 新增：自定義播放清單狀態樣式 */
+/* 混和曲風播放清單 */
 .custom-playlist-status {
-  min-width: 200px;
-  max-width: 300px;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  min-width: 160px;
+  max-width: 200px;
+  border: 1px solid rgba(255, 252, 252, 0.3);
   backdrop-filter: blur(5px);
 }
 
 .custom-playlist-status:hover {
-  background: rgba(30, 58, 138, 0.6);
-  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(50, 65, 106, 0.6);
+  border-color: rgba(255, 255, 254, 0.5);
 }
 
 /* 改進音頻均衡器樣式 */
@@ -1683,18 +1584,23 @@ onUnmounted(() => {
   transition: opacity 0.3s ease;
 }
 
-/* 優化播放控制按鈕間距 */
-.play-controls-container {
-  margin: 0 1rem;
-}
-
 /* 🔧 確保相對定位容器正確設置 */
 .relative {
   position: relative;
 }
 
-/* 響應式優化 */
+/* 響應式設計 */
+@media (max-width: 1280px) {
+  .grid-cols-6 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1024px) {
+  .grid-cols-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  
   .custom-playlist-status {
     min-width: 150px;
     max-width: 200px;
@@ -1716,6 +1622,33 @@ onUnmounted(() => {
   .dropdown-item {
     padding: 6px 12px;
     font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .grid-cols-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  
+  .w-64 { 
+    width: 12rem; 
+  }
+  
+  /* 混和曲風播放清單在小屏幕上的響應式調整 */
+  .flex-wrap {
+    flex-wrap: wrap;
+  }
+  
+  .space-x-4 > * + * {
+    margin-left: 0.5rem;
+  }
+  
+  .gap-4 {
+    gap: 0.5rem;
   }
 }
 </style>

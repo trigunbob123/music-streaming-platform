@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.10",
+    "@tailwindcss/vite": "^4.1.11",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vue/eslint-config-prettier": "^10.0.0",
     "@vue/test-utils": "^2.4.6",
