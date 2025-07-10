@@ -36,8 +36,78 @@ export function useJamendo() {
   const currentPlayPromise = ref(null)
   const playbackState = ref('idle') // 'idle', 'loading', 'playing', 'paused', 'error'
 
+  // 🆕 新增：音頻格式驗證和備用 URL 處理
+  const getSupportedAudioUrl = (track) => {
+    // 優先順序：MP3 > OGG > 原始 URL
+    const audioUrls = []
+    
+    // 檢查不同的音頻 URL 屬性
+    if (track.audio) audioUrls.push(track.audio)
+    if (track.audiodownload) audioUrls.push(track.audiodownload)
+    if (track.audiodownload_allowed && track.shorturl) {
+      audioUrls.push(track.shorturl + '/download/')
+    }
+    
+    // 過濾並排序 URL (優先 MP3)
+    const validUrls = audioUrls.filter(url => url && typeof url === 'string')
+    const mp3Urls = validUrls.filter(url => url.toLowerCase().includes('.mp3') || url.toLowerCase().includes('mp3'))
+    const otherUrls = validUrls.filter(url => !url.toLowerCase().includes('.mp3'))
+    
+    console.log('🔗 找到的音頻 URLs:', { mp3Urls, otherUrls, allUrls: validUrls })
+    
+    return [...mp3Urls, ...otherUrls]
+  }
+
+  // 🆕 新增：改進的音頻 URL 測試機制
+  const testAudioUrl = async (url, quickTest = false) => {
+    return new Promise((resolve) => {
+      // 如果是快速測試模式，跳過實際測試，只驗證 URL 格式
+      if (quickTest) {
+        try {
+          new URL(url)
+          console.log('✅ URL 格式有效 (快速測試):', url)
+          resolve(true)
+        } catch (error) {
+          console.warn('❌ URL 格式無效:', url, error.message)
+          resolve(false)
+        }
+        return
+      }
+      
+      const testAudio = new Audio()
+      const timeout = setTimeout(() => {
+        testAudio.src = ''
+        console.warn('⏰ URL 測試超時:', url)
+        resolve(false)
+      }, 2000) // 減少到 2 秒超時
+      
+      testAudio.addEventListener('canplay', () => {
+        clearTimeout(timeout)
+        testAudio.src = ''
+        console.log('✅ URL 測試通過:', url)
+        resolve(true)
+      }, { once: true })
+      
+      testAudio.addEventListener('error', (e) => {
+        clearTimeout(timeout)
+        testAudio.src = ''
+        console.warn('❌ URL 測試失敗:', url, e.target?.error?.message || '未知錯誤')
+        resolve(false)
+      }, { once: true })
+      
+      try {
+        testAudio.src = url
+        testAudio.load()
+      } catch (error) {
+        clearTimeout(timeout)
+        console.warn('❌ URL 設置失敗:', url, error.message)
+        resolve(false)
+      }
+    })
+  }
+
   // 檢查配置
- const checkConfig = async () => {
+  const checkConfig = async () => {
     try {
       console.log('🚂 檢查 Railway Jamendo 配置...')
       
@@ -82,25 +152,7 @@ export function useJamendo() {
   // 🔧 改進的音頻播放器初始化
   const initializePlayer = () => {
     try {
-      if (audioPlayer.value) {
-        // 清理現有播放器
-        audioPlayer.value.removeEventListener('loadstart', onLoadStart)
-        audioPlayer.value.removeEventListener('canplay', onCanPlay)
-        audioPlayer.value.removeEventListener('play', onPlay)
-        audioPlayer.value.removeEventListener('pause', onPause)
-        audioPlayer.value.removeEventListener('timeupdate', onTimeUpdate)
-        audioPlayer.value.removeEventListener('ended', onEnded)
-        audioPlayer.value.removeEventListener('error', onError)
-        audioPlayer.value.removeEventListener('stalled', onStalled)
-        audioPlayer.value.removeEventListener('suspend', onSuspend)
-      }
-      
-      audioPlayer.value = new Audio()
-      audioPlayer.value.volume = volume.value / 100
-      audioPlayer.value.crossOrigin = "anonymous"
-      audioPlayer.value.preload = "metadata"
-      
-      // 🔧 改進的事件處理器
+      // 先宣告所有事件處理函數
       const onLoadStart = () => {
         console.log('🎵 開始載入音頻')
         isLoadingTrack.value = true
@@ -145,7 +197,30 @@ export function useJamendo() {
       
       const onError = (e) => {
         console.error('❌ 音頻播放錯誤:', e)
-        lastError.value = '音頻載入失敗'
+        
+        // 🆕 改進的錯誤訊息處理
+        let errorMessage = '音頻載入失敗'
+        if (e.target && e.target.error) {
+          const mediaError = e.target.error
+          switch (mediaError.code) {
+            case MediaError.MEDIA_ERR_ABORTED:
+              errorMessage = '音頻載入被中止'
+              break
+            case MediaError.MEDIA_ERR_NETWORK:
+              errorMessage = '網路錯誤'
+              break
+            case MediaError.MEDIA_ERR_DECODE:
+              errorMessage = '音頻格式不支援或文件損壞'
+              break
+            case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+              errorMessage = '音頻格式不支援'
+              break
+            default:
+              errorMessage = '未知的音頻錯誤'
+          }
+        }
+        
+        lastError.value = errorMessage
         isPlaying.value = false
         isLoadingTrack.value = false
         playbackState.value = 'error'
@@ -161,6 +236,24 @@ export function useJamendo() {
         console.log('⏸️ 音頻載入暫停')
         isLoadingTrack.value = false
       }
+      
+      // 清理現有播放器
+      if (audioPlayer.value) {
+        audioPlayer.value.removeEventListener('loadstart', onLoadStart)
+        audioPlayer.value.removeEventListener('canplay', onCanPlay)
+        audioPlayer.value.removeEventListener('play', onPlay)
+        audioPlayer.value.removeEventListener('pause', onPause)
+        audioPlayer.value.removeEventListener('timeupdate', onTimeUpdate)
+        audioPlayer.value.removeEventListener('ended', onEnded)
+        audioPlayer.value.removeEventListener('error', onError)
+        audioPlayer.value.removeEventListener('stalled', onStalled)
+        audioPlayer.value.removeEventListener('suspend', onSuspend)
+      }
+      
+      audioPlayer.value = new Audio()
+      audioPlayer.value.volume = volume.value / 100
+      audioPlayer.value.crossOrigin = "anonymous"
+      audioPlayer.value.preload = "metadata"
       
       // 添加事件監聽器
       audioPlayer.value.addEventListener('loadstart', onLoadStart)
@@ -183,7 +276,7 @@ export function useJamendo() {
   }
 
   // API 請求封裝
-   const jamendoAPI = async (endpoint, params = {}) => {
+  const jamendoAPI = async (endpoint, params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString()
       const url = `${API_BASE}/api/jamendo/${endpoint}${queryString ? '?' + queryString : ''}`
@@ -383,80 +476,170 @@ export function useJamendo() {
       // 設置新的音軌
       currentTrack.value = track
       
-      // 🔧 改進音頻 URL 驗證
-      const audioUrl = track.audio || track.audiodownload
-      if (!audioUrl) {
+      // 🆕 改進音頻 URL 驗證和備用處理
+      const audioUrls = getSupportedAudioUrl(track)
+      if (audioUrls.length === 0) {
         throw new Error('沒有可用的音頻 URL')
       }
       
-      // 🔧 驗證 URL 格式
-      try {
-        new URL(audioUrl)
-      } catch (urlError) {
-        console.error('❌ 無效的音頻 URL:', audioUrl)
-        throw new Error('音頻 URL 格式無效')
+      console.log('🔗 可用的音頻 URLs:', audioUrls)
+      
+      // 🆕 優化策略：先嘗試快速測試，如果都失敗再嘗試詳細測試
+      let successfulUrl = null
+      let attemptCount = 0
+      
+      // 第一輪：快速測試 (只驗證 URL 格式)
+      for (const audioUrl of audioUrls) {
+        attemptCount++
+        try {
+          console.log(`🔗 嘗試音頻 URL ${attemptCount}/${audioUrls.length} (快速測試):`, audioUrl)
+          
+          // 🔧 驗證 URL 格式
+          new URL(audioUrl)
+          
+          // 🆕 快速測試 - 只檢查格式，不實際載入
+          const isUrlValid = await testAudioUrl(audioUrl, true)
+          if (!isUrlValid) {
+            console.warn('⚠️ URL 格式無效，跳過:', audioUrl)
+            continue
+          }
+          
+          // 🔧 嘗試直接載入而不做複雜的預測試
+          console.log('🎵 直接嘗試載入音頻:', audioUrl)
+          
+          // 🔧 重要：先重置音頻元素
+          audioPlayer.value.src = ''
+          audioPlayer.value.load()
+          
+          // 等待重置完成
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          // 設置新的音頻源
+          audioPlayer.value.src = audioUrl
+          
+          // 🔧 改進的音頻載入等待機制 - 更寬鬆的超時
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              console.warn('⏰ 音頻載入超時，嘗試下一個 URL:', audioUrl)
+              reject(new Error('音頻載入超時'))
+            }, 8000) // 8秒超時
+            
+            let resolved = false
+            
+            const onCanPlay = () => {
+              if (resolved) return
+              resolved = true
+              clearTimeout(timeout)
+              audioPlayer.value.removeEventListener('canplay', onCanPlay)
+              audioPlayer.value.removeEventListener('error', onError)
+              audioPlayer.value.removeEventListener('stalled', onStalled)
+              audioPlayer.value.removeEventListener('loadeddata', onLoadedData)
+              resolve()
+            }
+            
+            const onLoadedData = () => {
+              if (resolved) return
+              console.log('📊 音頻數據已載入，準備播放:', audioUrl)
+              // 如果有數據載入，也認為是成功的
+              onCanPlay()
+            }
+            
+            const onError = (e) => {
+              if (resolved) return
+              resolved = true
+              clearTimeout(timeout)
+              audioPlayer.value.removeEventListener('canplay', onCanPlay)
+              audioPlayer.value.removeEventListener('error', onError)
+              audioPlayer.value.removeEventListener('stalled', onStalled)
+              audioPlayer.value.removeEventListener('loadeddata', onLoadedData)
+              
+              let errorMsg = '音頻載入失敗'
+              if (e.target?.error) {
+                const mediaError = e.target.error
+                switch (mediaError.code) {
+                  case MediaError.MEDIA_ERR_ABORTED:
+                    errorMsg = '載入被中止'
+                    break
+                  case MediaError.MEDIA_ERR_NETWORK:
+                    errorMsg = '網路錯誤'
+                    break
+                  case MediaError.MEDIA_ERR_DECODE:
+                    errorMsg = '解碼錯誤'
+                    break
+                  case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                    errorMsg = '格式不支援'
+                    break
+                }
+              }
+              
+              console.warn('❌ 音頻載入錯誤:', audioUrl, errorMsg)
+              reject(new Error(errorMsg))
+            }
+            
+            const onStalled = () => {
+              console.warn('⚠️ 音頻載入停滯，等待恢復:', audioUrl)
+              // 給更多時間等待網路恢復
+              setTimeout(() => {
+                if (!resolved) {
+                  console.log('🔄 嘗試重新載入停滯的音頻:', audioUrl)
+                  audioPlayer.value.load()
+                }
+              }, 3000)
+            }
+            
+            // 監聽多個事件，提高成功率
+            audioPlayer.value.addEventListener('canplay', onCanPlay, { once: true })
+            audioPlayer.value.addEventListener('loadeddata', onLoadedData, { once: true })
+            audioPlayer.value.addEventListener('error', onError, { once: true })
+            audioPlayer.value.addEventListener('stalled', onStalled, { once: true })
+            
+            // 開始載入
+            console.log('📥 開始載入音頻:', audioUrl)
+            audioPlayer.value.load()
+          })
+          
+          // 如果到這裡，說明 URL 可用
+          successfulUrl = audioUrl
+          console.log('✅ 成功載入音頻 URL:', successfulUrl)
+          break
+          
+        } catch (urlError) {
+          console.warn(`⚠️ URL ${attemptCount}/${audioUrls.length} 失敗，嘗試下一個:`, audioUrl, urlError.message)
+          
+          // 如果是最後一個 URL 且還沒成功，繼續嘗試
+          if (attemptCount === audioUrls.length && !successfulUrl) {
+            console.log('🔄 所有 URL 快速測試都失敗，嘗試更寬鬆的策略...')
+            
+            // 最後一招：嘗試第一個 URL 並直接播放，忽略預載入錯誤
+            const fallbackUrl = audioUrls[0]
+            try {
+              console.log('🎯 緊急備用策略，使用第一個 URL:', fallbackUrl)
+              audioPlayer.value.src = ''
+              audioPlayer.value.load()
+              await new Promise(resolve => setTimeout(resolve, 200))
+              audioPlayer.value.src = fallbackUrl
+              successfulUrl = fallbackUrl
+              break
+            } catch (fallbackError) {
+              console.error('❌ 緊急備用策略也失敗:', fallbackError)
+            }
+          }
+          continue
+        }
       }
       
-      console.log('🔗 設置音頻 URL:', audioUrl)
-      
-      // 🔧 重要：先重置音頻元素
-      audioPlayer.value.src = ''
-      audioPlayer.value.load()
-      
-      // 等待重置完成
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // 設置新的音頻源
-      audioPlayer.value.src = audioUrl
-      
-      // 🔧 改進的音頻載入等待機制
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('音頻載入超時'))
-        }, 15000) // 15秒超時
-        
-        let resolved = false
-        
-        const onCanPlay = () => {
-          if (resolved) return
-          resolved = true
-          clearTimeout(timeout)
-          audioPlayer.value.removeEventListener('canplay', onCanPlay)
-          audioPlayer.value.removeEventListener('error', onError)
-          audioPlayer.value.removeEventListener('stalled', onStalled)
-          resolve()
+      // 如果所有 URL 都失敗了
+      if (!successfulUrl) {
+        // 🆕 最後嘗試：使用第一個看起來最有希望的 URL
+        if (audioUrls.length > 0) {
+          const lastAttemptUrl = audioUrls[0]
+          console.log('🎲 最後嘗試使用第一個 URL (無預檢):', lastAttemptUrl)
+          audioPlayer.value.src = lastAttemptUrl
+          successfulUrl = lastAttemptUrl
+        } else {
+          throw new Error('沒有找到任何音頻 URL')
         }
-        
-        const onError = (e) => {
-          if (resolved) return
-          resolved = true
-          clearTimeout(timeout)
-          audioPlayer.value.removeEventListener('canplay', onCanPlay)
-          audioPlayer.value.removeEventListener('error', onError)
-          audioPlayer.value.removeEventListener('stalled', onStalled)
-          
-          const errorMsg = e.target?.error?.message || e.message || '音頻載入失敗'
-          console.error('❌ 音頻載入錯誤:', errorMsg)
-          reject(new Error(`音頻載入失敗: ${errorMsg}`))
-        }
-        
-        const onStalled = () => {
-          console.warn('⚠️ 音頻載入停滯，嘗試重新載入...')
-          // 嘗試重新載入
-          setTimeout(() => {
-            if (!resolved) {
-              audioPlayer.value.load()
-            }
-          }, 2000)
-        }
-        
-        audioPlayer.value.addEventListener('canplay', onCanPlay, { once: true })
-        audioPlayer.value.addEventListener('error', onError, { once: true })
-        audioPlayer.value.addEventListener('stalled', onStalled, { once: true })
-        
-        // 開始載入
-        audioPlayer.value.load()
-      })
+      }
       
       // 設置音量
       audioPlayer.value.volume = volume.value / 100
@@ -474,12 +657,12 @@ export function useJamendo() {
       
       if (error.message.includes('超時')) {
         userFriendlyMessage = '音頻載入超時，請檢查網路連接'
-      } else if (error.message.includes('格式') || error.message.includes('decode')) {
-        userFriendlyMessage = '音頻格式不支援'
+      } else if (error.message.includes('格式') || error.message.includes('decode') || error.message.includes('Format error')) {
+        userFriendlyMessage = '音頻格式不支援，嘗試下一首歌曲'
       } else if (error.message.includes('網路') || error.message.includes('NETWORK')) {
         userFriendlyMessage = '網路連接問題'
-      } else if (error.message.includes('URL')) {
-        userFriendlyMessage = '音頻連結無效'
+      } else if (error.message.includes('URL') || error.message.includes('不可用')) {
+        userFriendlyMessage = '音頻連結無效，嘗試下一首歌曲'
       }
       
       lastError.value = userFriendlyMessage
@@ -761,7 +944,8 @@ export function useJamendo() {
       isJamendoConnected.value = true
       lastError.value = ''
       playbackState.value = 'idle'
-    if (import.meta.env.PROD) {
+      
+      if (import.meta.env.PROD) {
         console.log('✅ Railway Jamendo 連接成功')
       } else {
         console.log('✅ 開發環境 Jamendo 連接成功')
@@ -838,7 +1022,6 @@ export function useJamendo() {
       console.log('💡 提示：Jamendo 需要正確配置才能使用')
     }
   })
-
 
   onUnmounted(() => {
     try {
