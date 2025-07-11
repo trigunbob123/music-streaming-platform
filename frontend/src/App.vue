@@ -9,8 +9,8 @@
       @set-mode="setCurrentMode"
     />
 
-    <!-- 主要內容區域 -->
-    <div class="main-content">
+    <!-- 主要內容區域 - 動態背景 -->
+    <div class="main-content" :class="currentThemeClass">
       <!-- 頂部播放器 -->
       <TopPlayer 
         :current-track="currentTrack"
@@ -189,6 +189,9 @@ const loading = ref(false)
 const searchQuery = ref('')
 const displayedTracks = ref([])
 
+// 🆕 新增：當前選中的曲風主題
+const currentTheme = ref('default')
+
 // 收藏功能
 const favoriteTrackIds = ref(new Set())
 const favoriteTracks = ref([])
@@ -237,6 +240,11 @@ const availableGenres = [
   { label: 'Soundtrack', value: 'soundtrack' },
   { label: 'World', value: 'world' }
 ]
+
+// 🆕 新增：計算當前主題 CSS 類別
+const currentThemeClass = computed(() => {
+  return `theme-${currentTheme.value}`
+})
 
 // 搜尋防抖
 let searchTimeout = null
@@ -383,6 +391,7 @@ const searchTracks = async () => {
   
   loading.value = true
   selectedTag.value = ''
+  currentTheme.value = 'search' // 🆕 搜尋時的主題
   
   try {
     if (jamendoSearch && typeof jamendoSearch === 'function') {
@@ -402,17 +411,18 @@ const handleSeek = (event) => {
   seek(event)
 }
 
-// 按標籤搜尋
+// 🆕 修改：按標籤搜尋 - 加入主題變更
 const searchByTag = async (tag) => {
   selectedTag.value = tag
   searchQuery.value = ''
+  currentTheme.value = tag // 🆕 設定當前主題為選中的曲風
   
   loading.value = true
   try {
     if (getTracksByTag && typeof getTracksByTag === 'function') {
       const results = await getTracksByTag(tag, { limit: 30 })
       displayedTracks.value = results
-      console.log(`🎵 搜尋 ${tag} 曲風，找到 ${results.length} 首歌曲`)
+      console.log(`🎵 搜尋 ${tag} 曲風，找到 ${results.length} 首歌曲，主題切換為 ${tag}`)
     }
   } catch (error) {
     console.error('標籤搜尋失敗:', error)
@@ -421,11 +431,12 @@ const searchByTag = async (tag) => {
   }
 }
 
-// 設置模式
+// 🆕 修改：設置模式 - 加入主題變更
 const setCurrentMode = async (mode) => {
   currentMode.value = mode
   selectedTag.value = ''
   searchQuery.value = ''
+  currentTheme.value = mode // 🆕 根據模式設定主題
   
   if (mode === 'favorites') {
     displayedTracks.value = [...favoriteTracks.value]
@@ -513,6 +524,7 @@ const getTracksWithFallback = async (genreValue, genreLabel, count) => {
 const startCustomPlaylist = async () => {
   try {
     isGeneratingPlaylist.value = true
+    currentTheme.value = 'custom' // 🆕 自定義播放清單主題
     console.log('🎵 開始生成自定義播放清單...', playlistConfig.value)
     
     const customPlaylist = []
@@ -733,12 +745,92 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 100vh; /* 確保主內容區域至少佔滿螢幕高度 */
+  transition: background 0.8s ease-in-out; /* 🆕 背景變換動畫 */
 }
 
 .content-area {
   flex: 1;
   padding: 1.5rem;
   min-height: calc(100vh - 200px); /* 減去頂部播放器和其他固定元素的高度 */
+}
+
+/* 🆕 新增：不同曲風主題的漸層背景 */
+
+/* 預設主題 */
+.theme-default,
+.theme-popular {
+  background: linear-gradient(90deg, #eeeeee 0%, #17243e 100%);
+}
+
+/* POP 主題 - 鮮豔粉紅色 */
+.theme-pop {
+  background: linear-gradient(90deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+}
+
+/* ROCK 主題 - 強烈橙紅色 */
+.theme-rock {
+  background: linear-gradient(90deg, #ff6b6b 0%, #ee5a24 50%, #ea2027 100%);
+}
+
+/* ELECTRONIC 主題 - 霓虹藍紫色 */
+.theme-electronic {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+}
+
+/* JAZZ 主題 - 優雅金黃色 */
+.theme-jazz {
+  background: linear-gradient(90deg, #f6d365 0%, #fda085 50%, #ff9068 100%);
+}
+
+/* CLASSICAL 主題 - 典雅紫色 */
+.theme-classical {
+  background: linear-gradient(90deg, #a8edea 0%, #fed6e3 50%, #d299c2 100%);
+}
+
+/* HIP HOP 主題 - 都市金色 */
+.theme-hiphop {
+  background: linear-gradient(90deg, #f093fb 0%, #f5576c 50%, #4facfe 100%);
+}
+
+/* METAL 主題 - 深沉灰黑色 */
+.theme-metal {
+  background: linear-gradient(90deg, #434343 0%, #000000 50%, #434343 100%);
+}
+
+/* WORLD 主題 - 地球色彩 */
+.theme-world {
+  background: linear-gradient(90deg, #56ab2f 0%, #a8e6cf 50%, #88d8a3 100%);
+}
+
+/* SOUNDTRACK 主題 - 電影感藍色 */
+.theme-soundtrack {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+}
+
+/* LOUNGE 主題 - 放鬆紫粉色 */
+.theme-lounge {
+  background: linear-gradient(90deg, #ffecd2 0%, #fcb69f 50%, #ffecd2 100%);
+}
+
+/* 特殊模式主題 */
+.theme-favorites {
+  background: linear-gradient(90deg, #ff9a9e 0%, #f093fb 50%, #fad0c4 100%);
+}
+
+.theme-latest {
+  background: linear-gradient(90deg, #a8edea 0%, #fed6e3 50%, #fad0c4 100%);
+}
+
+.theme-random {
+  background: linear-gradient(90deg, #d299c2 0%, #fef9d7 50%, #667eea 100%);
+}
+
+.theme-search {
+  background: linear-gradient(90deg, #89f7fe 0%, #66a6ff 50%, #89f7fe 100%);
+}
+
+.theme-custom {
+  background: linear-gradient(90deg, #ff9068 0%, #fd746c 50%, #ff9068 100%);
 }
 
 /* 響應式設計 */
