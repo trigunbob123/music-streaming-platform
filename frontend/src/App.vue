@@ -5,8 +5,11 @@
       :is-jamendo-connected="isJamendoConnected"
       :jamendo-configured="jamendoConfigured"
       :current-mode="currentMode"
+      :user="user"
       @connect-jamendo="connectJamendo"
       @set-mode="setCurrentMode"
+      @show-login="showLoginModal"
+      @logout="handleLogout"
     />
 
     <!-- 主要內容區域 - 動態背景 -->
@@ -79,12 +82,33 @@
           :jamendo-configured="jamendoConfigured"
           :loading="loading"
           :current-mode="currentMode"
+          :user="user"
           @track-click="handleTrackClick"
-          @toggle-favorite="toggleFavorite"
+          @toggle-favorite="handleToggleFavorite"
           @connect-jamendo="connectJamendo"
         />
       </div>
     </div>
+
+    <!-- 會員登入彈窗 -->
+    <transition name="modal">
+      <div v-if="showLoginDialog" class="modal-overlay" @click.self="closeLoginModal">
+        <div class="modal-container">
+          <MemberLogin 
+            v-if="loginMode === 'login'"
+            @close="closeLoginModal"
+            @login-success="handleLoginSuccess"
+            @switch-to-register="switchToRegister"
+          />
+          <MemberRegister 
+            v-if="loginMode === 'register'"
+            @close="closeLoginModal"
+            @register-success="handleRegisterSuccess"
+            @switch-to-login="switchToLogin"
+          />
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -101,6 +125,8 @@ import GenreButtons from './components/GenreButtons.vue'
 import FavoriteHeader from './components/FavoriteHeader.vue'
 import LoadingIndicator from './components/LoadingIndicator.vue'
 import MusicGrid from './components/MusicGrid.vue'
+import MemberLogin from './components/MemberLogin.vue'
+import MemberRegister from './components/MemberRegister.vue'
 
 // Jamendo 組合式函數
 let jamendoComposable = null
@@ -199,6 +225,11 @@ const favoriteTracks = ref([])
 // 追蹤當前選中的標籤
 const selectedTag = ref('')
 
+// 🆕 新增：會員系統
+const user = ref(null)
+const showLoginDialog = ref(false)
+const loginMode = ref('login') // 'login' 或 'register'
+
 // Jamendo API 官方推薦的10個曲風
 const jamendoTags = ref([
   'pop', 'rock', 'electronic', 'jazz', 'classical',
@@ -245,6 +276,70 @@ const availableGenres = [
 const currentThemeClass = computed(() => {
   return `theme-${currentTheme.value}`
 })
+
+// 🆕 新增：會員系統方法
+const showLoginModal = () => {
+  showLoginDialog.value = true
+  loginMode.value = 'login'
+}
+
+const closeLoginModal = () => {
+  showLoginDialog.value = false
+}
+
+const switchToLogin = () => {
+  loginMode.value = 'login'
+}
+
+const switchToRegister = () => {
+  loginMode.value = 'register'
+}
+
+const handleLoginSuccess = (userData) => {
+  user.value = userData
+  showLoginDialog.value = false
+  
+  // 登入成功後立即載入該用戶的收藏
+  loadFavoritesFromStorage()
+  
+  console.log('✅ 登入成功:', userData)
+}
+
+const handleRegisterSuccess = (userData) => {
+  console.log('✅ 註冊成功:', userData)
+}
+
+const handleLogout = () => {
+  user.value = null
+  localStorage.removeItem('user')
+  
+  // 清空當前的收藏狀態（但不刪除存儲的數據）
+  favoriteTrackIds.value.clear()
+  favoriteTracks.value = []
+  
+  // 如果當前在收藏頁面，切換到熱門歌曲
+  if (currentMode.value === 'favorites') {
+    setCurrentMode('popular')
+  }
+  
+  console.log('✅ 登出成功')
+}
+
+const checkLoginStatus = () => {
+  try {
+    const savedUser = localStorage.getItem('user')
+    if (savedUser) {
+      user.value = JSON.parse(savedUser)
+      console.log('✅ 恢復登入狀態:', user.value.username)
+      
+      // 恢復登入狀態後立即載入該用戶的收藏
+      loadFavoritesFromStorage()
+    }
+  } catch (error) {
+    console.error('❌ 恢復登入狀態失敗:', error)
+    localStorage.removeItem('user')
+  }
+}
 
 // 搜尋防抖
 let searchTimeout = null
@@ -334,46 +429,96 @@ const handleTrackClick = async (track) => {
   }
 }
 
+// 🆕 修改：收藏功能方法 - 加入登入驗證
+const handleToggleFavorite = (track) => {
+  // 檢查是否已登入
+  if (!user.value) {
+    console.log('⚠️ 需要登入才能使用收藏功能')
+    showLoginModal()
+    return
+  }
+  
+  toggleFavorite(track)
+}
+
 // 收藏功能方法
 const toggleFavorite = (track) => {
   if (favoriteTrackIds.value.has(track.id)) {
+    // 移除收藏
     favoriteTrackIds.value.delete(track.id)
     favoriteTracks.value = favoriteTracks.value.filter(t => t.id !== track.id)
+    console.log(`💔 移除收藏: ${track.name}`)
   } else {
+    // 添加收藏
     favoriteTrackIds.value.add(track.id)
     favoriteTracks.value.push(track)
+    console.log(`❤️ 添加收藏: ${track.name}`)
   }
   
+  // 如果當前在收藏頁面，立即更新顯示
   if (currentMode.value === 'favorites') {
     displayedTracks.value = [...favoriteTracks.value]
   }
   
+  // 保存到 localStorage
   saveFavoritesToStorage()
 }
 
 const saveFavoritesToStorage = () => {
+  if (!user.value) {
+    console.log('⚠️ 用戶未登入，無法保存收藏')
+    return
+  }
+  
   try {
-    localStorage.setItem('favorite_tracks', JSON.stringify(favoriteTracks.value))
-    localStorage.setItem('favorite_track_ids', JSON.stringify([...favoriteTrackIds.value]))
+    const userKey = `favorite_tracks_${user.value.username}`
+    const userIdsKey = `favorite_track_ids_${user.value.username}`
+    
+    localStorage.setItem(userKey, JSON.stringify(favoriteTracks.value))
+    localStorage.setItem(userIdsKey, JSON.stringify([...favoriteTrackIds.value]))
+    
+    console.log(`✅ 保存用戶 ${user.value.username} 的收藏: ${favoriteTracks.value.length} 首歌曲`)
   } catch (error) {
-    console.error('保存收藏失敗:', error)
+    console.error('❌ 保存收藏失敗:', error)
   }
 }
 
 const loadFavoritesFromStorage = () => {
+  // 先清空當前的收藏狀態
+  favoriteTrackIds.value.clear()
+  favoriteTracks.value = []
+  
+  if (!user.value) {
+    console.log('⚠️ 用戶未登入，無法載入收藏')
+    return
+  }
+  
   try {
-    const savedTracks = localStorage.getItem('favorite_tracks')
-    const savedIds = localStorage.getItem('favorite_track_ids')
+    const userKey = `favorite_tracks_${user.value.username}`
+    const userIdsKey = `favorite_track_ids_${user.value.username}`
+    
+    const savedTracks = localStorage.getItem(userKey)
+    const savedIds = localStorage.getItem(userIdsKey)
     
     if (savedTracks) {
-      favoriteTracks.value = JSON.parse(savedTracks)
+      const tracksData = JSON.parse(savedTracks)
+      favoriteTracks.value = tracksData
+      console.log(`✅ 載入用戶 ${user.value.username} 的收藏歌曲: ${tracksData.length} 首`)
     }
     
     if (savedIds) {
-      favoriteTrackIds.value = new Set(JSON.parse(savedIds))
+      const idsData = JSON.parse(savedIds)
+      favoriteTrackIds.value = new Set(idsData)
+      console.log(`✅ 載入用戶 ${user.value.username} 的收藏ID: ${idsData.length} 個`)
     }
+    
+    // 如果當前在收藏頁面，更新顯示的歌曲
+    if (currentMode.value === 'favorites') {
+      displayedTracks.value = [...favoriteTracks.value]
+    }
+    
   } catch (error) {
-    console.error('載入收藏失敗:', error)
+    console.error('❌ 載入收藏失敗:', error)
   }
 }
 
@@ -431,8 +576,15 @@ const searchByTag = async (tag) => {
   }
 }
 
-// 🆕 修改：設置模式 - 加入主題變更
+// 🆕 修改：設置模式 - 加入登入驗證和主題變更
 const setCurrentMode = async (mode) => {
+  // 如果是收藏模式，檢查是否已登入
+  if (mode === 'favorites' && !user.value) {
+    console.log('⚠️ 需要登入才能查看收藏')
+    showLoginModal()
+    return
+  }
+  
   currentMode.value = mode
   selectedTag.value = ''
   searchQuery.value = ''
@@ -714,9 +866,25 @@ watch(isJamendoConnected, async (connected) => {
   }
 }, { immediate: false })
 
+// 監聽用戶登入狀態變化
+watch(user, (newUser, oldUser) => {
+  if (newUser && newUser !== oldUser) {
+    // 用戶登入時載入收藏
+    loadFavoritesFromStorage()
+  } else if (!newUser && oldUser) {
+    // 用戶登出時清空收藏狀態
+    favoriteTrackIds.value.clear()
+    favoriteTracks.value = []
+    if (currentMode.value === 'favorites') {
+      displayedTracks.value = []
+    }
+  }
+}, { immediate: false })
+
 // 初始化
 onMounted(async () => {
-  loadFavoritesFromStorage()
+  // 先檢查登入狀態，這會自動載入對應用戶的收藏
+  checkLoginStatus()
   
   if (isJamendoConnected.value && currentMode.value !== 'favorites') {
     await setCurrentMode('popular')
@@ -752,6 +920,46 @@ onUnmounted(() => {
   flex: 1;
   padding: 1.5rem;
   min-height: calc(100vh - 200px); /* 減去頂部播放器和其他固定元素的高度 */
+}
+
+/* 🆕 新增：彈窗動畫 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-container {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.modal-enter-active, .modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from, .modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .modal-container,
+.modal-leave-active .modal-container {
+  transition: transform 0.3s ease;
+}
+
+.modal-enter-from .modal-container,
+.modal-leave-to .modal-container {
+  transform: scale(0.9) translateY(-20px);
 }
 
 /* 🆕 新增：不同曲風主題的漸層背景 */

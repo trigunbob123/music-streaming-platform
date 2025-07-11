@@ -94,3 +94,8 @@ app.component('font-awesome-icon', FontAwesomeIcon)
 app.mount('#app')
 
 console.log('🚀 Vue 應用已啟動')
+
+const meta = document.createElement('meta')
+meta.httpEquiv = 'Content-Security-Policy'
+meta.content = "script-src 'self' 'unsafe-inline' https://accounts.google.com"
+document.head.appendChild(meta)

@@ -8,6 +8,7 @@
       :is-playing="isPlaying"
       :is-loading-track="isLoadingTrack"
       :is-favorite="isFavorite(track.id)"
+      :user="user"
       @track-click="$emit('track-click', track)"
       @toggle-favorite="$emit('toggle-favorite', track)"
     />
@@ -54,6 +55,9 @@
       <p class="text-sm">
         {{ currentMode === 'favorites' ? '點擊歌曲右上角的愛心來收藏音樂' : '使用上方搜尋欄或點擊標籤按鈕來尋找音樂' }}
       </p>
+      <div v-if="currentMode === 'favorites' && !user" class="mt-4">
+        <p class="text-xs text-gray-400 mb-2">需要登入才能使用收藏功能</p>
+      </div>
     </div>
   </div>
 </template>
@@ -97,6 +101,10 @@ const props = defineProps({
   currentMode: {
     type: String,
     required: true
+  },
+  user: {
+    type: Object,
+    default: null
   }
 })
 
