@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="audio-visualizer" v-show="!isLoadingTrack">
     <div class="equalizer-bars">
       <div 

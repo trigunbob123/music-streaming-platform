@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="p-4 bg-gradient-to-r from-blue-900 to-black-600 rounded-lg">
     <!-- 標題區域 -->
     <div class="mb-0">

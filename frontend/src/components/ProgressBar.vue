@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="flex items-center space-x-2" style="min-width: 170px;">
     <span class="text-xs text-gray-300 w-12 text-right">{{ formatTime(currentTime) }}</span>
     <div 

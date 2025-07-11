@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="flex items-center space-x-2">
     <button 
       @click="$emit('toggle-shuffle')" 

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="flex items-center min-w-0 flex-1" v-if="currentTrack.name">
     <!-- 封面 -->
     <div class="w-20 h-20 rounded-lg mr-4 overflow-hidden flex-shrink-0">

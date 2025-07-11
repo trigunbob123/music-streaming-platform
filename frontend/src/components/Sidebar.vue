@@ -1,11 +1,11 @@
-<template>
+﻿<template>
   <div class="w-64 sidebar text-white p-10">
     <div class="flex items-center justify-between mb-8">
-      <!-- 只顯示 logo，移除連接狀態 -->
+      
       <div class="flex items-center">
         <img src="@/assets/images/12.png" alt="DDM360" class="h-auto w-25" />
       </div>
-      <!-- 連接按鈕區域 -->
+      
       <div class="flex space-x-2">
         <button 
           v-if="!isJamendoConnected && jamendoConfigured" 
@@ -88,7 +88,7 @@ defineEmits(['connect-jamendo', 'set-mode'])
   width: 6.25rem;
 }
 
-/* 響應式設計 */
+
 @media (max-width: 768px) {
   .w-64 { 
     width: 12rem; 

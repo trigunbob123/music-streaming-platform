@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="bg-gray-800 p-6 text-white">
     <div class="flex items-center justify-between">
       <!-- 左側：當前播放歌曲 -->

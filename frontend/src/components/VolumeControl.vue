@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="flex items-center space-x-2">
     <button class="btn btn-circle bg-transparent text-white hover:bg-gray-700">
       <font-awesome-icon :icon="getVolumeIcon()" class="text-lg" />

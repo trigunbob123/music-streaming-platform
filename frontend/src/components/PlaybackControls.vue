@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="play-controls-container">
     <button 
       @click="$emit('previous-track')" 

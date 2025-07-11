@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="flex h-screen bg-gray-100">
     <!-- 左側邊欄 -->
     <SideBar 

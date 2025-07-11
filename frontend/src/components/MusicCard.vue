@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div 
     class="music-card bg-white rounded-lg p-3 shadow-md hover:shadow-lg cursor-pointer border relative"
     :class="{ 'ring-2 ring-orange-500': currentTrack.id === track.id }"

@@ -1,4 +1,4 @@
-<!-- frontend/src/components/ErrorBoundary.vue -->
+﻿<!-- frontend/src/components/ErrorBoundary.vue -->
 <template>
   <div v-if="hasError" class="error-container">
     <div class="error-card">

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="mb-6">
     <h2 class="text-2xl font-bold text-gray-600 flex items-center ">
       <font-awesome-icon icon="heart" class="mr-2 text-red-500" />

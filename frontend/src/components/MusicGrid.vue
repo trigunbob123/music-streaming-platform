@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="grid grid-cols-6 gap-4">
     <MusicCard
       v-for="track in displayedTracks" 

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="relative inline-block w-full">
     <input 
       :value="searchQuery"
