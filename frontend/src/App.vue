@@ -93,7 +93,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useJamendo } from './composables/useJamendo'
 
 // 組件導入
-import SideBar from './components/SideBar.vue'
+import SideBar from './components/Sidebar.vue'
 import TopPlayer from './components/TopPlayer.vue'
 import SearchBar from './components/SearchBar.vue'
 import PlaylistControl from './components/PlaylistControl.vue'
