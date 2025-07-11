@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="flex h-screen bg-gray-100">
+  <div class="app-container">
     <!-- 左側邊欄 -->
     <SideBar 
       :is-jamendo-connected="isJamendoConnected"
@@ -10,7 +10,7 @@
     />
 
     <!-- 主要內容區域 -->
-    <div class="flex-1 main-content">
+    <div class="main-content">
       <!-- 頂部播放器 -->
       <TopPlayer 
         :current-track="currentTrack"
@@ -50,7 +50,7 @@
       </div>
 
       <!-- 主要內容 -->
-      <div class="p-6">
+      <div class="content-area">
         <!-- Jamendo 曲風按鈕 -->
         <GenreButtons 
           v-if="isJamendoConnected && currentMode !== 'favorites'"
@@ -720,9 +720,27 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.flex {
+/* 🔧 修改：確保側邊欄與內容區域高度一致的佈局 */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f3f4f6;
   align-items: stretch; /* 讓子元素高度一致 */
 }
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* 確保主內容區域至少佔滿螢幕高度 */
+}
+
+.content-area {
+  flex: 1;
+  padding: 1.5rem;
+  min-height: calc(100vh - 200px); /* 減去頂部播放器和其他固定元素的高度 */
+}
+
 /* 響應式設計 */
 @media (max-width: 1280px) {
   .grid-cols-6 {
@@ -745,8 +763,17 @@ onUnmounted(() => {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   
-  .w-64 { 
-    width: 12rem; 
+  .app-container {
+    flex-direction: column;
+    align-items: normal;
+  }
+  
+  .main-content {
+    min-height: auto;
+  }
+  
+  .content-area {
+    min-height: auto;
   }
 }
 </style>

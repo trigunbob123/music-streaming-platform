@@ -4,7 +4,8 @@
       :value="searchQuery"
       @input="$emit('update:searchQuery', $event.target.value); $emit('search')"
       placeholder="🔎搜尋歌曲、藝人或專輯..." 
-      class="w-full py-1 my-0 px-4 border border-black rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+      class="w-full py-1 my-0 px-4 border-2 border-white rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+
     />
   </div>
 </template>

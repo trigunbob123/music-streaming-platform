@@ -42,7 +42,7 @@ const formatTime = (seconds) => {
 
 <style scoped>
 .progress-bar {
-  background: linear-gradient(90deg, #ff6b35, #f7931e, #ffab00);
+  background: linear-gradient(90deg, #b03407, #f4870a, #fccc6a);
   box-shadow: 0 0 4px rgba(255, 171, 0, 0.3);
 }
 </style>

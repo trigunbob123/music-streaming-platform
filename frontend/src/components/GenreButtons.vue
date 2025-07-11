@@ -41,16 +41,16 @@ defineEmits(['search-by-tag'])
 
 // 曲風名稱中英對照
 const genreNameMap = {
-  'pop': 'POP',
-  'rock': 'ROCK', 
-  'electronic': 'ELECTRONIC',
-  'jazz': 'JAZZ',
-  'classical': 'CLASSICAL',
-  'hiphop': 'HIP HOP',
-  'metal': 'METAL',
-  'world': 'WORLD',
-  'soundtrack': 'SOUNDTRACK',
-  'lounge': 'LOUNGE'
+  'pop': '🔸POP',
+  'rock': '🔸ROCK', 
+  'electronic': '🔸ELECTRONIC',
+  'jazz': '🔸JAZZ',
+  'classical': '🔸CLASSICAL',
+  'hiphop': '🔸HIP HOP',
+  'metal': '🔸METAL',
+  'world': '🔸WORLD',
+  'soundtrack': '🔸SOUNDTRACK',
+  'lounge': '🔸LOUNGE'
 }
 
 // 曲風按鈕樣式控制

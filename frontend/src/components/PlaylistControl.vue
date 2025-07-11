@@ -1,11 +1,12 @@
 ﻿<template>
-  <div class="p-4 bg-gradient-to-r from-blue-900 to-black-600 rounded-lg">
+  <div class="p-4 bg-[url('@/assets/images/61.png')] bg-cover bg-center rounded-lg">
     <!-- 標題區域 -->
     <div class="mb-0">
       <span class="text-white text-sm font-medium">🎶自選混和曲風與數量</span>
     </div>
     
     <!-- 控制區域 - 確保所有元素高度一致 -->
+
     <div class="flex items-end space-x-4 flex-wrap">
       <!-- 第一個曲風按鈕組 -->
       <div class="flex items-center space-x-2">
@@ -55,7 +56,7 @@
       </div>
 
       <!-- 加號 -->
-      <div class="text-white text-2xl font-bold">+</div>
+      <div class="text-white text-2xl font-bold relative -translate-y-3">+</div>
 
       <!-- 第二個曲風按鈕組 -->
       <div class="flex items-center space-x-2">
@@ -100,7 +101,7 @@
       </div>
 
       <!-- 加號 -->
-      <div class="text-white text-2xl font-bold">+</div>
+      <div class="text-white text-2xl font-bold relative -translate-y-3">+</div>
 
       <!-- 第三個曲風按鈕組 -->
       <div class="flex items-center space-x-2">

@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="w-64 sidebar text-white p-10">
+  <div class="sidebar text-white p-10">
     <div class="flex items-center justify-between mb-8">
       
       <div class="flex items-center">
@@ -78,19 +78,27 @@ defineEmits(['connect-jamendo', 'set-mode'])
 </script>
 
 <style scoped>
+/* 🔧 修改：確保側邊欄背景延伸到與內容區域底部齊平 */
 .sidebar {
-  background: linear-gradient(135deg, #000000 0%, #764ba2 100%);
-  min-height: 100vh;
-  height: auto;
+  background: linear-gradient(rgba(4, 5, 8, 0.7), rgba(61, 2, 116, 0.9)), 
+              url('@/assets/images/58.jpg');
+  /* background: linear-gradient(135deg, #000000 0%, #940d53 100%); */
+  width: 16rem; /* w-64 = 256px = 16rem */
+  min-height: 100vh; /* 至少保持全螢幕高度 */
+  height: auto; /* 根據內容自動調整 */
+  flex-shrink: 0; /* 防止側邊欄被壓縮 */
+  display: flex;
+  flex-direction: column;
+  align-self: stretch; /* 讓側邊欄撐滿父容器高度 */
 }
 
 .w-25 {
   width: 6.25rem;
 }
 
-
+/* 響應式設計 */
 @media (max-width: 768px) {
-  .w-64 { 
+  .sidebar { 
     width: 12rem; 
   }
   
