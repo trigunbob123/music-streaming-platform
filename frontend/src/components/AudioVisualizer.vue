@@ -1,7 +1,12 @@
 ﻿<template>
-  <div class="audio-visualizer" v-show="!isLoadingTrack">
+                                <!-- v-show只在歌曲不是載入狀態時顯示 -->
+                                <!-- v-for="i in 16": 產生16個均衡器條形 -->
+                                <!-- :ref="el => ... 將每個條形的DOM元素儲存到陣列中 -->
+                                <!-- :data-freq-group: 為每個條形設定頻率組別（低音、中音、高音） -->
+  <div class="audio-visualizer" v-show="!isLoadingTrack">       
     <div class="equalizer-bars">
       <div 
+           
         v-for="i in 16" 
         :key="i" 
         class="equalizer-bar"
@@ -18,17 +23,17 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 const props = defineProps({
   isLoadingTrack: {
     type: Boolean,
-    required: true
+    required: true   // 是否正在載入歌曲
   },
   isPlaying: {
     type: Boolean,
-    required: true
+    required: true    // 是否正在播放
   }
 })
 
 // 音頻均衡器相關
-const equalizerBars = ref([])
-const audioFrequencyData = ref(Array(16).fill(0.1))
+const equalizerBars = ref([])                              // 儲存16個條形的DOM元素
+const audioFrequencyData = ref(Array(16).fill(0.1))        // 初始化16個頻率數據，預設值0.1
 
 // 獲取頻率組
 const getFrequencyGroup = (index) => {
@@ -48,37 +53,44 @@ const simulateRealisticAudioSpectrum = () => {
     updateEqualizerBars()
     return
   }
+  // 🎼 音樂節拍模擬
+  const currentTimeMs = Date.now()            // 當前時間（毫秒）
+  const beatPeriod = 600                      // 節拍週期（600毫秒 = 100 BPM）
+  const beatPhase = (currentTimeMs % beatPeriod) / beatPeriod           // 節拍相位 (0-1)
+  const beatIntensity = Math.max(0, Math.sin(beatPhase * Math.PI * 2))  // 節拍強度
   
-  const currentTimeMs = Date.now()
-  const beatPeriod = 600
-  const beatPhase = (currentTimeMs % beatPeriod) / beatPeriod
-  const beatIntensity = Math.max(0, Math.sin(beatPhase * Math.PI * 2))
   
+  // 🎚️ 為每個頻率條形產生數據
   audioFrequencyData.value = audioFrequencyData.value.map((currentValue, index) => {
     const freqGroup = getFrequencyGroup(index)
     let newValue = currentValue
     
+    // 🥁 低音處理（模擬鼓聲和低音）
     if (freqGroup === 'bass') {
       const bassPattern = beatIntensity * (0.8 + Math.sin(currentTimeMs * 0.003 + index) * 0.2)
       const bassRandom = 0.7 + Math.random() * 0.3
       newValue = bassPattern * bassRandom
       
+       // 節拍開始時增強低音
       if (beatPhase < 0.1) {
         newValue = Math.min(1.0, newValue * 1.5)
       }
       
+      // 🎸 中音處理（模擬人聲和主旋律）
     } else if (freqGroup === 'mid') {
       const midBase = Math.sin(currentTimeMs * 0.005 + index * 0.8) * 0.4 + 0.5
       const midRhythm = Math.sin(beatPhase * Math.PI * 3) * 0.3
       const midRandom = 0.6 + Math.random() * 0.4
       newValue = (midBase + midRhythm) * midRandom
       
+      // 🎺 高音處理（模擬高音樂器和效果）
     } else {
       const highFreq = Math.sin(currentTimeMs * 0.008 + index * 1.5) * 0.5 + 0.4
       const highSpikes = Math.random() > 0.8 ? Math.random() * 0.6 : 0
       const highRandom = 0.5 + Math.random() * 0.5
       newValue = (highFreq + highSpikes) * highRandom
       
+      // 節拍末尾時增強高音
       if (beatPhase > 0.7 && beatPhase < 0.9 && Math.random() > 0.7) {
         newValue = Math.min(1.0, newValue * 2)
       }
@@ -88,7 +100,7 @@ const simulateRealisticAudioSpectrum = () => {
     return currentValue * smoothing + newValue * (1 - smoothing)
   })
   
-  updateEqualizerBars()
+  updateEqualizerBars()  // 更新視覺效果
 }
 
 // 更新均衡器條形顯示
@@ -96,10 +108,11 @@ const updateEqualizerBars = () => {
   equalizerBars.value.forEach((bar, index) => {
     if (!bar) return
     
-    const intensity = audioFrequencyData.value[index]
-    const height = Math.max(8, Math.min(90, intensity * 100))
+    const intensity = audioFrequencyData.value[index]           // 獲取強度值
+    const height = Math.max(8, Math.min(90, intensity * 100))   // 計算高度 (8%-90%)
     const freqGroup = getFrequencyGroup(index)
     
+    // 設定條形高度
     bar.style.height = `${height}%`
     
     // 🔧 根據播放狀態調整顏色
